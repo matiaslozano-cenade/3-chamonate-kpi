@@ -1,0 +1,188 @@
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowUpRight, Sprout, Package, Wrench } from "lucide-react";
+
+type Modulo = {
+  titulo: string;
+  descripcion: string;
+  url: string;
+  icono: React.ComponentType<{ className?: string }>;
+  acento: {
+    glow: string;
+    iconBg: string;
+    iconRing: string;
+    iconBgHover: string;
+    iconRingHover: string;
+    iconColor: string;
+    dot: string;
+    dotShadow: string;
+    textActive: string;
+    border: string;
+    shadow: string;
+  };
+};
+
+const MODULOS: Modulo[] = [
+  {
+    titulo: "Campo",
+    descripcion: "Rentabilidad por temporada, variedad y cuartel de Campo Chamonate.",
+    url: "/campo.html",
+    icono: Sprout,
+    acento: {
+      glow: "bg-emerald-500/10 group-hover:bg-emerald-500/20",
+      iconBg: "bg-emerald-500/10",
+      iconRing: "ring-emerald-500/30",
+      iconBgHover: "group-hover:bg-emerald-500/20",
+      iconRingHover: "group-hover:ring-emerald-400/50",
+      iconColor: "text-emerald-400",
+      dot: "bg-emerald-400",
+      dotShadow: "shadow-[0_0_8px_rgba(52,211,153,0.6)]",
+      textActive: "text-emerald-400",
+      border: "hover:border-emerald-500/40",
+      shadow: "hover:shadow-emerald-500/20",
+    },
+  },
+  {
+    titulo: "Packing",
+    descripcion: "Rentabilidad de operación de packing y resultados por línea.",
+    url: "/packing.html",
+    icono: Package,
+    acento: {
+      glow: "bg-orange-500/10 group-hover:bg-orange-500/20",
+      iconBg: "bg-orange-500/10",
+      iconRing: "ring-orange-500/30",
+      iconBgHover: "group-hover:bg-orange-500/20",
+      iconRingHover: "group-hover:ring-orange-400/50",
+      iconColor: "text-orange-400",
+      dot: "bg-orange-400",
+      dotShadow: "shadow-[0_0_8px_rgba(251,146,60,0.6)]",
+      textActive: "text-orange-400",
+      border: "hover:border-orange-500/40",
+      shadow: "hover:shadow-orange-500/20",
+    },
+  },
+  {
+    titulo: "Maquinaria",
+    descripcion: "Rentabilidad de la flota de maquinaria (2024 – 2026 Q1).",
+    url: "/maquinaria.html",
+    icono: Wrench,
+    acento: {
+      glow: "bg-blue-500/10 group-hover:bg-blue-500/20",
+      iconBg: "bg-blue-500/10",
+      iconRing: "ring-blue-500/30",
+      iconBgHover: "group-hover:bg-blue-500/20",
+      iconRingHover: "group-hover:ring-blue-400/50",
+      iconColor: "text-blue-400",
+      dot: "bg-blue-400",
+      dotShadow: "shadow-[0_0_8px_rgba(96,165,250,0.6)]",
+      textActive: "text-blue-400",
+      border: "hover:border-blue-500/40",
+      shadow: "hover:shadow-blue-500/20",
+    },
+  },
+];
+
+export default function Home() {
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      <BackgroundDeco />
+
+      <main className="relative mx-auto max-w-6xl px-6 py-12 sm:px-8 sm:py-16 lg:py-24">
+        <header className="flex flex-col items-center text-center">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white p-8 shadow-2xl shadow-blue-900/30 ring-1 ring-white/10">
+            <Image
+              src="/chamonate-logo.png"
+              alt="Chamonate"
+              width={1000}
+              height={300}
+              className="h-auto w-full"
+              priority
+            />
+          </div>
+
+          <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-red-400">
+            Indicadores de rentabilidad
+          </p>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
+            KPIs{" "}
+            <span className="bg-gradient-to-r from-emerald-400 via-orange-400 to-blue-400 bg-clip-text text-transparent">
+              Chamonate
+            </span>
+          </h1>
+          <p className="mt-4 max-w-xl text-base text-zinc-400 sm:text-lg">
+            Elige el dashboard que quieres revisar.
+          </p>
+        </header>
+
+        <section className="mt-16 grid gap-5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3">
+          {MODULOS.map((modulo) => (
+            <ModuloCard key={modulo.titulo} modulo={modulo} />
+          ))}
+        </section>
+
+        <footer className="mt-20 border-t border-white/5 pt-6 text-center text-xs text-zinc-500">
+          <p>
+            Chamonate · Indicadores internos · Mantenido por{" "}
+            <span className="text-zinc-400">Cenade</span>
+          </p>
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+function ModuloCard({ modulo }: { modulo: Modulo }) {
+  const Icon = modulo.icono;
+  const a = modulo.acento;
+
+  return (
+    <Link
+      href={modulo.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black p-6 shadow-xl transition-all ${a.border} ${a.shadow} sm:p-7`}
+    >
+      <div className={`pointer-events-none absolute -right-20 -top-20 size-64 rounded-full ${a.glow} blur-3xl transition-opacity`} />
+
+      <div className="relative flex items-start justify-between">
+        <div className={`flex size-12 items-center justify-center rounded-xl ${a.iconBg} ring-1 ${a.iconRing} transition-all ${a.iconBgHover} ${a.iconRingHover}`}>
+          <Icon className={`size-6 ${a.iconColor}`} />
+        </div>
+        <ArrowUpRight className={`size-5 text-zinc-600 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${a.iconColor.replace("text-", "group-hover:text-")}`} />
+      </div>
+
+      <h3 className="relative mt-5 text-xl font-semibold text-white">
+        {modulo.titulo}
+      </h3>
+      <p className="relative mt-2 text-sm leading-relaxed text-zinc-400">
+        {modulo.descripcion}
+      </p>
+
+      <div className="relative mt-5 flex items-center gap-1.5 text-xs">
+        <span className={`size-1.5 rounded-full ${a.dot} ${a.dotShadow}`} />
+        <span className={`font-medium ${a.textActive}`}>Abrir dashboard</span>
+      </div>
+    </Link>
+  );
+}
+
+function BackgroundDeco() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      <div className="absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-blue-900/30 blur-[120px]" />
+      <div className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-emerald-600/10 blur-[100px]" />
+      <div className="absolute -bottom-20 left-0 h-[300px] w-[300px] rounded-full bg-orange-600/10 blur-[100px]" />
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
+          backgroundSize: "50px 50px",
+        }}
+      />
+    </div>
+  );
+}
