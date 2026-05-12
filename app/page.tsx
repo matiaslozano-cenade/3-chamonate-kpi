@@ -9,6 +9,7 @@ type Modulo = {
   descripcion: string;
   url: string;
   icono: React.ComponentType<{ className?: string }>;
+  disponible?: boolean;
   acento: {
     glow: string;
     iconBg: string;
@@ -29,6 +30,7 @@ const MODULOS: Modulo[] = [
     titulo: "Campo",
     descripcion: "Rentabilidad por temporada, variedad y cuartel de Campo Chamonate.",
     url: "/campo.html",
+    disponible: false,
     icono: Sprout,
     acento: {
       glow: "bg-emerald-500/10 group-hover:bg-emerald-500/20",
@@ -48,6 +50,7 @@ const MODULOS: Modulo[] = [
     titulo: "Packing",
     descripcion: "Rentabilidad de operación de packing y resultados por línea.",
     url: "/packing.html",
+    disponible: false,
     icono: Package,
     acento: {
       glow: "bg-orange-500/10 group-hover:bg-orange-500/20",
@@ -144,24 +147,26 @@ export default function Home() {
 function ModuloCard({ modulo }: { modulo: Modulo }) {
   const Icon = modulo.icono;
   const a = modulo.acento;
+  const disponible = modulo.disponible !== false;
 
-  return (
-    <Link
-      href={modulo.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black p-6 shadow-xl transition-all ${a.border} ${a.shadow} sm:p-7`}
-    >
+  const inner = (
+    <>
       <div className={`pointer-events-none absolute -right-20 -top-20 size-64 rounded-full ${a.glow} blur-3xl transition-opacity`} />
 
       <div className="relative flex items-start justify-between">
-        <div className={`flex size-12 items-center justify-center rounded-xl ${a.iconBg} ring-1 ${a.iconRing} transition-all ${a.iconBgHover} ${a.iconRingHover}`}>
+        <div className={`flex size-12 items-center justify-center rounded-xl ${a.iconBg} ring-1 ${a.iconRing} transition-all ${disponible ? `${a.iconBgHover} ${a.iconRingHover}` : ""}`}>
           <Icon className={`size-6 ${a.iconColor}`} />
         </div>
-        <ArrowUpRight className={`size-5 text-zinc-600 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${a.iconColor.replace("text-", "group-hover:text-")}`} />
+        {disponible ? (
+          <ArrowUpRight className={`size-5 text-zinc-600 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${a.iconColor.replace("text-", "group-hover:text-")}`} />
+        ) : (
+          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            En desarrollo
+          </span>
+        )}
       </div>
 
-      <h3 className="relative mt-5 text-xl font-semibold text-white">
+      <h3 className={`relative mt-5 text-xl font-semibold ${disponible ? "text-white" : "text-zinc-500"}`}>
         {modulo.titulo}
       </h3>
       <p className="relative mt-2 text-sm leading-relaxed text-zinc-400">
@@ -170,9 +175,30 @@ function ModuloCard({ modulo }: { modulo: Modulo }) {
 
       <div className="relative mt-5 flex items-center gap-1.5 text-xs">
         <span className={`size-1.5 rounded-full ${a.dot} ${a.dotShadow}`} />
-        <span className={`font-medium ${a.textActive}`}>Abrir dashboard</span>
+        <span className={`font-medium ${a.textActive}`}>
+          {disponible ? "Abrir dashboard" : "Próximamente"}
+        </span>
       </div>
-    </Link>
+    </>
+  );
+
+  if (disponible) {
+    return (
+      <Link
+        href={modulo.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black p-6 shadow-xl transition-all ${a.border} ${a.shadow} sm:p-7`}
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black p-6 opacity-40 shadow-xl sm:p-7 cursor-not-allowed select-none">
+      {inner}
+    </div>
   );
 }
 
