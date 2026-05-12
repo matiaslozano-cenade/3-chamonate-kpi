@@ -557,10 +557,10 @@ function renderMaquina() {
   if(costos_d.length>0){
     const total = costos_d.reduce((s,c)=>s+c.monto,0);
     html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"><div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Composición de costos '+yLabel(y)+'</h3><canvas id="chart-maq-costos" height="200"></canvas></div></div>';
-    html += '<div class="card"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Detalle por grupo</h3><table class="w-full text-xs"><thead><tr><th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Grupo</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Monto</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">%</th></tr></thead><tbody>';
+    html += '<div class="card"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Detalle por categoría</h3><table class="w-full text-xs"><thead><tr><th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Categoría</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Monto</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">%</th></tr></thead><tbody>';
     costos_d.forEach(c=>{
       const pct = total>0?(c.monto/total*100):0;
-      html += '<tr class="border-b border-gray-50"><td class="py-2 px-2 text-gray-700 font-medium">'+c.grupo+'</td><td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">'+fCLP(c.monto)+'</td><td class="py-2 px-2 text-right text-gray-500">'+fPct(pct)+'</td></tr>';
+      html += '<tr class="border-b border-gray-50"><td class="py-2 px-2 text-gray-700 font-medium">'+c.categoria+'</td><td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">'+fCLP(c.monto)+'</td><td class="py-2 px-2 text-right text-gray-500">'+fPct(pct)+'</td></tr>';
     });
     html += '</tbody></table></div></div></div>';
   }
@@ -603,7 +603,7 @@ function renderMaquina() {
     const palette = ['#EF4444','#166534','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EC4899','#06B6D4','#F97316','#64748B','#A855F7','#14B8A6','#D97706','#EAB308'];
     charts.maqCostos = new Chart(document.getElementById('chart-maq-costos'),{
       type:'doughnut',
-      data:{labels:costos_d.map(c=>c.grupo),datasets:[{data:costos_d.map(c=>c.monto),backgroundColor:palette.slice(0,costos_d.length),borderWidth:2,borderColor:'#fff'}]},
+      data:{labels:costos_d.map(c=>c.categoria),datasets:[{data:costos_d.map(c=>c.monto),backgroundColor:palette.slice(0,costos_d.length),borderWidth:2,borderColor:'#fff'}]},
       options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.label+': '+fCLP(ctx.raw)}},legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',font:{size:10},padding:8}}}}
     });
   }
