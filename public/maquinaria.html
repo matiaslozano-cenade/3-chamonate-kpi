@@ -29,6 +29,9 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   #mov-panel { display:none; }
   #mov-panel.visible { display:block; }
+  .dl-cell { cursor: pointer; }
+  .dl-cell:hover { background: rgba(59,130,246,0.07) !important; }
+  .dl-icon { opacity: 0.35; font-size: 0.68em; margin-left: 2px; }
 </style>
 </head>
 <body style="background:#F8F9FC">
@@ -382,13 +385,17 @@ function renderGeneral() {
   let html = '<thead><tr><th class="py-2 px-3 text-left text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100"></th>';
   ra.forEach(r => { html += '<th class="py-2 px-3 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">' + yLabel(r.ano) + '</th>'; });
   html += '</tr></thead><tbody>';
-  [{l:'Ingresos',k:'ingreso',c:'text-blue-700',fmt:fCLP},{l:'Costos operativos',k:'costo',c:'text-red-500',fmt:fCLP},{l:'Resultado',k:'resultado',c:'',fmt:fCLP,dyn:true,bold:true,sep:true},{l:'Margen %',k:'margen',c:'',fmt:fPct,dyn:true,bold:true}].forEach(r => {
+  [{l:'Ingresos',k:'ingreso',c:'text-blue-700',fmt:fCLP,dl:'ingresos'},{l:'Costos operativos',k:'costo',c:'text-red-500',fmt:fCLP,dl:'costos'},{l:'Resultado',k:'resultado',c:'',fmt:fCLP,dyn:true,bold:true,sep:true},{l:'Margen %',k:'margen',c:'',fmt:fPct,dyn:true,bold:true}].forEach(r => {
     html += '<tr class="border-b border-gray-50' + (r.sep?' border-t-2 border-t-gray-200':'') + '">';
-    html += '<td class="py-2 px-3 text-sm ' + (r.bold?'font-bold':'font-medium') + ' text-gray-700">' + r.l + '</td>';
+    html += '<td class="py-2 px-3 text-sm ' + (r.bold?'font-bold':'font-medium') + ' text-gray-700">' + r.l + (r.dl?' <span class="dl-icon">📥</span>':'') + '</td>';
     ra.forEach(rec => {
       const v = rec[r.k];
       const color = r.dyn ? (v >= 0 ? 'text-emerald-600' : 'text-red-500') : (r.c || 'text-gray-700');
-      html += '<td class="py-2 px-3 text-right ' + (r.bold?'font-bold':'font-medium') + ' ' + color + '" style="font-variant-numeric:tabular-nums">' + r.fmt(v) + '</td>';
+      if (r.dl) {
+        html += '<td class="py-2 px-3 text-right font-medium ' + color + ' dl-cell" style="font-variant-numeric:tabular-nums" title="Descargar CSV · ' + r.l + ' ' + rec.ano + '" onclick="dlClick(\'' + r.dl + '\',' + rec.ano + ',0,null,null)">' + r.fmt(v) + '</td>';
+      } else {
+        html += '<td class="py-2 px-3 text-right ' + (r.bold?'font-bold':'font-medium') + ' ' + color + '" style="font-variant-numeric:tabular-nums">' + r.fmt(v) + '</td>';
+      }
     });
     html += '</tr>';
   });
@@ -467,8 +474,8 @@ function renderMensual() {
   meses.forEach(r => {
     th += '<tr class="border-b border-gray-50">' +
       '<td class="py-2 px-2 font-semibold text-gray-700">' + MESES[r.mes] + '</td>' +
-      '<td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">' + fM(r.ingreso) + '</td>' +
-      '<td class="py-2 px-2 text-right text-gray-500" style="font-variant-numeric:tabular-nums">' + fM(r.costo) + '</td>' +
+      '<td class="py-2 px-2 text-right dl-cell" style="font-variant-numeric:tabular-nums" title="Descargar CSV ingresos · ' + MESES[r.mes] + ' ' + y + '" onclick="dlClick(\'ingresos\',' + y + ',' + r.mes + ',null,null)">' + fM(r.ingreso) + '</td>' +
+      '<td class="py-2 px-2 text-right text-gray-500 dl-cell" style="font-variant-numeric:tabular-nums" title="Descargar CSV costos · ' + MESES[r.mes] + ' ' + y + '" onclick="dlClick(\'costos\',' + y + ',' + r.mes + ',null,null)">' + fM(r.costo) + '</td>' +
       '<td class="py-2 px-2 text-right font-bold ' + (r.resultado>=0?'text-emerald-600':'text-red-500') + '" style="font-variant-numeric:tabular-nums">' + fM(r.resultado) + '</td>' +
       '<td class="py-2 px-2 text-right"><span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (r.resultado>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">' + (r.ingreso>0?fPct(r.margen):'-') + '</span></td>' +
       '</tr>';
@@ -521,8 +528,8 @@ function renderGrupo() {
       '<button id="btn-cerrar-grupo" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>' +
       '</div>' +
       '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' +
-      '<div class="bg-blue-50 rounded-xl p-3 text-center"><p class="text-xs text-blue-400 font-semibold mb-1">Ingreso</p><p class="text-lg font-extrabold text-blue-700">' + fM(r.ingreso) + '</p></div>' +
-      '<div class="bg-red-50 rounded-xl p-3 text-center"><p class="text-xs text-red-400 font-semibold mb-1">Costo</p><p class="text-lg font-extrabold text-red-600">' + fM(r.costo) + '</p></div>' +
+      '<div class="bg-blue-50 rounded-xl p-3 text-center dl-cell" title="Descargar CSV ingresos · ' + u + '" onclick="dlClick(\'ingresos\',state.year,state.month,\'' + u + '\',null)"><p class="text-xs text-blue-400 font-semibold mb-1">Ingreso <span class="dl-icon">📥</span></p><p class="text-lg font-extrabold text-blue-700">' + fM(r.ingreso) + '</p></div>' +
+      '<div class="bg-red-50 rounded-xl p-3 text-center dl-cell" title="Descargar CSV costos · ' + u + '" onclick="dlClick(\'costos\',state.year,state.month,\'' + u + '\',null)"><p class="text-xs text-red-400 font-semibold mb-1">Costo <span class="dl-icon">📥</span></p><p class="text-lg font-extrabold text-red-600">' + fM(r.costo) + '</p></div>' +
       '<div class="bg-' + (r.resultado>=0?'emerald':'red') + '-50 rounded-xl p-3 text-center"><p class="text-xs text-' + (r.resultado>=0?'emerald':'red') + '-400 font-semibold mb-1">Resultado</p><p class="text-lg font-extrabold text-' + (r.resultado>=0?'emerald':'red') + '-700">' + fM(r.resultado) + '</p></div>' +
       '<div class="bg-amber-50 rounded-xl p-3 text-center"><p class="text-xs text-amber-500 font-semibold mb-1">Margen</p><p class="text-lg font-extrabold text-amber-700">' + fPct(r.margen) + '</p></div>' +
       '</div></div></div>';
@@ -628,8 +635,10 @@ function renderMaquina() {
     '<div class="bg-' + (c.resultado>=0?'emerald':'red') + '-50 rounded-xl p-3 text-center"><p class="text-xs text-' + (c.resultado>=0?'emerald':'red') + '-400 font-semibold mb-1">Resultado</p><p class="text-lg font-extrabold text-' + (c.resultado>=0?'emerald':'red') + '-700">' + fM(c.resultado) + '</p></div>' +
     '<div class="bg-amber-50 rounded-xl p-3 text-center"><p class="text-xs text-amber-500 font-semibold mb-1">Margen</p><p class="text-lg font-extrabold text-amber-700">' + (c.ingreso>0?fPct(c.margen):'S/I') + '</p></div>' +
     '</div>' +
-    '<div class="mt-4 flex justify-end">' +
-    '<button id="btn-ver-mov" class="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-all">📄 Ver movimientos Libro Mayor</button>' +
+    '<div class="mt-4 flex justify-end gap-2 flex-wrap">' +
+    '<button id="btn-ver-mov" class="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-all">📄 Ver movimientos</button>' +
+    '<button onclick="dlClick(\'ingresos\',state.year,state.month,null,\'' + meta.cod + '\')" class="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-all">📥 Ingresos CSV</button>' +
+    '<button onclick="dlClick(\'costos\',state.year,state.month,null,\'' + meta.cod + '\')" class="flex items-center gap-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-all">📥 Costos CSV</button>' +
     '</div>' +
     '</div></div>';
 
@@ -737,6 +746,58 @@ function hideMov() {
 }
 
 document.getElementById('mov-close').addEventListener('click', hideMov);
+
+// =========== DESCARGA CSV ===========
+function exportCSV(rows, filename) {
+  if (!rows.length) { alert('No hay datos para este período.'); return; }
+  const cols = ['fecha','ano_contable','mes_contable','tipo_doc','numero','cc_cod','cc_nombre','cc_grupo','cuenta','n_cuenta','glosa_enc','glosa_det','debe','haber','rut','nombre','tipo'];
+  const csv = [cols.join(';'), ...rows.map(r => cols.map(c => {
+    const v = r[c];
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    return (s.includes(';') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(';'))].join('\n');
+  const blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+async function downloadDetalle(params) {
+  const {tipo, ano, mes, grupo, cod} = params;
+  let allRows = [], from = 0;
+  const PAGE = 1000;
+  while (true) {
+    let q = db.from('v_3_maqu_detalle').select('*');
+    if (tipo && tipo !== 'ambos') q = q.eq('tipo', tipo);
+    if (ano) q = q.eq('ano_contable', ano);
+    if (mes && mes > 0) q = q.eq('mes_contable', mes);
+    if (grupo) q = q.eq('cc_grupo', grupo);
+    if (cod) q = q.eq('cc_cod', cod);
+    q = q.order('fecha').order('numero').range(from, from + PAGE - 1);
+    const { data, error } = await q;
+    if (error) { console.error(error); alert('Error al descargar: ' + error.message); return; }
+    if (!data?.length) break;
+    allRows.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  const t = tipo || 'todo';
+  const y = ano ? String(ano) : '';
+  const m = (mes && mes > 0) ? (MESES[mes] || String(mes)) : '';
+  const g = grupo ? grupo.replace(/\s+/g,'-') : '';
+  const c = cod || '';
+  const parts = ['MAQU', t, c || g || 'todos', y, m].filter(Boolean);
+  exportCSV(allRows, parts.join('_') + '.csv');
+}
+
+function dlClick(tipo, ano, mes, grupo, cod) {
+  downloadDetalle({ tipo, ano, mes: mes || 0, grupo: grupo || null, cod: cod || null });
+}
 
 initData();
 </script>
