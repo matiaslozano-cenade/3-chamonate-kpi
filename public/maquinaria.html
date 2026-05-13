@@ -6,6 +6,7 @@
 <title>Dashboard Rentabilidad MAQUINARIA - Chamonate</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
@@ -23,30 +24,39 @@
   .breadcrumb-item:hover { color: #192853; }
   .level-card { cursor: pointer; transition: all 0.2s; }
   .level-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(25,40,83,0.15); }
+  #loading-overlay { position:fixed;inset:0;background:rgba(248,249,252,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px; }
+  .spinner { width:40px;height:40px;border:4px solid #dbeafe;border-top-color:#192853;border-radius:50%;animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #mov-panel { display:none; }
+  #mov-panel.visible { display:block; }
 </style>
 </head>
 <body style="background:#F8F9FC">
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p class="text-sm font-semibold text-gray-500">Cargando datos desde Supabase...</p>
+</div>
 
 <a href="/" style="position:fixed;top:16px;left:16px;z-index:9999;display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(255,255,255,0.95);color:#192853;border:1px solid rgba(25,40,83,0.2);border-radius:9999px;font-family:'Inter',system-ui,sans-serif;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,0.15);backdrop-filter:blur(8px);transition:all 0.2s" onmouseover="this.style.background='#fff';this.style.transform='translateX(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.95)';this.style.transform='translateX(0)'">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
   Volver a Indicadores
 </a>
 
-
 <div style="background:linear-gradient(135deg,#010B24 0%,#192853 50%,#0E245E 100%)">
   <div class="max-w-7xl mx-auto px-6 pt-5 pb-3">
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-white text-lg font-extrabold tracking-tight">Proyecto Chamonate · Rentabilidad MAQUINARIA</h1>
-        <p class="text-blue-300/60 text-xs font-medium">Universo: 34 CC oficiales (organigrama) · Excel CC_Maquinaria · 2024–2026 · Fuente: Libro Mayor</p>
+        <p class="text-blue-300/60 text-xs font-medium">Fuente: Libro Mayor Supabase · Cuentas 4xxx (ingresos) y 3xxx (costos operativos)</p>
       </div>
       <span class="bg-blue-500/20 text-blue-300 text-xs font-bold px-3 py-1.5 rounded-full border border-blue-400/30">🚜 Maquinaria</span>
     </div>
     <div class="flex gap-1 mt-4" id="tabs">
-      <button data-tabid="general" class="tab-btn active flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📊 General</button>
-      <button data-tabid="mensual" class="tab-btn text-blue-200/50 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📅 Mensual</button>
-      <button data-tabid="grupo" class="tab-btn text-blue-200/50 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">🚜 Por Grupo</button>
-      <button data-tabid="maquina" class="tab-btn text-blue-200/50 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">🔧 Por Máquina</button>
+      <button data-tabid="general"  class="tab-btn active flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📊 General</button>
+      <button data-tabid="mensual"  class="tab-btn text-blue-200/50 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📅 Mensual</button>
+      <button data-tabid="grupo"    class="tab-btn text-blue-200/50 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">🚜 Por Grupo</button>
+      <button data-tabid="maquina"  class="tab-btn text-blue-200/50 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">🔧 Por Máquina</button>
     </div>
   </div>
 </div>
@@ -82,7 +92,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="card lg:col-span-2"><div class="p-5">
         <h3 class="text-sm font-bold text-gray-700 mb-1">Ingresos vs Costos · Resultado</h3>
-        <p class="text-xs text-gray-400 mb-4">Comparativa por año (2026 = enero-febrero)</p>
+        <p class="text-xs text-gray-400 mb-4">Comparativa por año · Libro Mayor</p>
         <canvas id="chart-anual" height="160"></canvas>
       </div></div>
       <div class="card"><div class="p-5">
@@ -92,8 +102,8 @@
       </div></div>
     </div>
     <div class="card"><div class="p-5">
-      <h3 class="text-sm font-bold text-gray-700 mb-1">Resultado por Grupo</h3><p class="text-xs text-gray-400 mb-4" id="ubic-ranking-subtitulo">Año seleccionado</p>
-      <p class="text-xs text-gray-400 mb-4">Click en una barra para ver el detalle</p>
+      <h3 class="text-sm font-bold text-gray-700 mb-1">Resultado por Grupo</h3>
+      <p class="text-xs text-gray-400 mb-4" id="ubic-ranking-subtitulo">Año seleccionado · Click en barra para ver detalle</p>
       <canvas id="chart-grupos" height="220"></canvas>
     </div></div>
   </div>
@@ -120,9 +130,6 @@
 
   <!-- POR GRUPO -->
   <div data-tab="grupo" class="space-y-6">
-    <div class="flex flex-wrap items-center justify-end gap-4">
-      <select id="grupo-select" class="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm" style="min-width:260px"></select>
-    </div>
     <div id="grupo-summary"></div>
     <div id="grupo-detail"></div>
   </div>
@@ -133,36 +140,50 @@
       <select id="maquina-select" class="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-200 shadow-sm" style="min-width:380px"></select>
     </div>
     <div id="maquina-content"></div>
+    <!-- Movimientos Libro Mayor drill-down -->
+    <div id="mov-panel" class="card">
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-bold text-gray-700" id="mov-title">Movimientos Libro Mayor</h3>
+            <p class="text-xs text-gray-400 mt-0.5" id="mov-subtitle"></p>
+          </div>
+          <button id="mov-close" class="text-gray-400 hover:text-gray-600 text-lg font-bold px-2">✕</button>
+        </div>
+        <div id="mov-loading" class="text-center py-8 text-sm text-gray-400">Cargando movimientos...</div>
+        <div class="overflow-x-auto" id="mov-table-wrap" style="display:none"></div>
+      </div>
+    </div>
   </div>
 
   <div class="text-center py-6 border-t border-gray-100 mt-4">
-    <p class="text-xs text-gray-400">Dashboard Rentabilidad Maquinaria · Mayo 2026 · Proyecto Chamonate</p>
+    <p class="text-xs text-gray-400">Dashboard Rentabilidad Maquinaria · Proyecto Chamonate · Fuente: Libro Mayor Supabase</p>
   </div>
 </div>
 
 <script>
-const DATA = {"resumen_anual": [{"ingreso": 488109757, "costo": 215011275, "resultado": 273098482, "margen": 56.0, "ano": 2024}, {"ingreso": 448413626, "costo": 245131860, "resultado": 203281766, "margen": 45.3, "ano": 2025}, {"ingreso": 10588620, "costo": 23603385, "resultado": -13014765, "margen": -122.9, "ano": 2026}], "resumen_mensual": [{"ingreso": 0, "costo": 8115124, "resultado": -8115124, "margen": -100, "ano": 2024, "mes": 1}, {"ingreso": 25553000, "costo": 16161878, "resultado": 9391122, "margen": 36.8, "ano": 2024, "mes": 2}, {"ingreso": 24475000, "costo": 20507734, "resultado": 3967266, "margen": 16.2, "ano": 2024, "mes": 3}, {"ingreso": 74796740, "costo": 16092183, "resultado": 58704557, "margen": 78.5, "ano": 2024, "mes": 4}, {"ingreso": 47585612, "costo": 22135916, "resultado": 25449696, "margen": 53.5, "ano": 2024, "mes": 5}, {"ingreso": 43660000, "costo": 20654106, "resultado": 23005894, "margen": 52.7, "ano": 2024, "mes": 6}, {"ingreso": 45767805, "costo": 16725037, "resultado": 29042768, "margen": 63.5, "ano": 2024, "mes": 7}, {"ingreso": 103173498, "costo": 24754680, "resultado": 78418818, "margen": 76.0, "ano": 2024, "mes": 8}, {"ingreso": 25647000, "costo": 9746961, "resultado": 15900039, "margen": 62.0, "ano": 2024, "mes": 9}, {"ingreso": 45578271, "costo": 12044797, "resultado": 33533474, "margen": 73.6, "ano": 2024, "mes": 10}, {"ingreso": 1750000, "costo": 29780312, "resultado": -28030312, "margen": -1601.7, "ano": 2024, "mes": 11}, {"ingreso": 50122831, "costo": 18292547, "resultado": 31830284, "margen": 63.5, "ano": 2024, "mes": 12}, {"ingreso": 0, "costo": 20481010, "resultado": -20481010, "margen": -100, "ano": 2025, "mes": 1}, {"ingreso": 55473000, "costo": 24317361, "resultado": 31155639, "margen": 56.2, "ano": 2025, "mes": 2}, {"ingreso": 22820000, "costo": 21194423, "resultado": 1625577, "margen": 7.1, "ano": 2025, "mes": 3}, {"ingreso": 26905193, "costo": 33187837, "resultado": -6282644, "margen": -23.4, "ano": 2025, "mes": 4}, {"ingreso": 36731353, "costo": 35392098, "resultado": 1339255, "margen": 3.6, "ano": 2025, "mes": 5}, {"ingreso": 102460920, "costo": 9665778, "resultado": 92795142, "margen": 90.6, "ano": 2025, "mes": 6}, {"ingreso": 53650500, "costo": 33491594, "resultado": 20158906, "margen": 37.6, "ano": 2025, "mes": 7}, {"ingreso": 93501280, "costo": 14328947, "resultado": 79172333, "margen": 84.7, "ano": 2025, "mes": 8}, {"ingreso": 16242000, "costo": 11456513, "resultado": 4785487, "margen": 29.5, "ano": 2025, "mes": 9}, {"ingreso": 2024000, "costo": 20264439, "resultado": -18240439, "margen": -901.2, "ano": 2025, "mes": 10}, {"ingreso": 29341380, "costo": 6092913, "resultado": 23248467, "margen": 79.2, "ano": 2025, "mes": 11}, {"ingreso": 9264000, "costo": 15258947, "resultado": -5994947, "margen": -64.7, "ano": 2025, "mes": 12}, {"ingreso": 8345620, "costo": 17461113, "resultado": -9115493, "margen": -109.2, "ano": 2026, "mes": 1}, {"ingreso": 2243000, "costo": 6142272, "resultado": -3899272, "margen": -173.8, "ano": 2026, "mes": 2}], "resumen_grupo": [{"ingreso": 28492249, "costo": 37656424, "resultado": -9164175, "margen": -32.2, "ano": 2024, "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 73941, "costo": 19020189, "resultado": -18946248, "margen": -25623.5, "ano": 2024, "grupo": "Camionetas"}, {"ingreso": 401554567, "costo": 131635127, "resultado": 269919440, "margen": 67.2, "ano": 2024, "grupo": "Tractores"}, {"ingreso": 0, "costo": 2637370, "resultado": -2637370, "margen": -100, "ano": 2024, "grupo": "Subsoladores"}, {"ingreso": 450000, "costo": 8556579, "resultado": -8106579, "margen": -1801.5, "ano": 2024, "grupo": "Destroncadores"}, {"ingreso": 53980000, "costo": 9106798, "resultado": 44873202, "margen": 83.1, "ano": 2024, "grupo": "Trituradoras"}, {"ingreso": 3559000, "costo": 6398788, "resultado": -2839788, "margen": -79.8, "ano": 2024, "grupo": "Otras"}, {"ingreso": 18901193, "costo": 46253719, "resultado": -27352526, "margen": -144.7, "ano": 2025, "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 0, "costo": 15752062, "resultado": -15752062, "margen": -100, "ano": 2025, "grupo": "Camionetas"}, {"ingreso": 376942053, "costo": 117387852, "resultado": 259554201, "margen": 68.9, "ano": 2025, "grupo": "Tractores"}, {"ingreso": 0, "costo": 603982, "resultado": -603982, "margen": -100, "ano": 2025, "grupo": "Subsoladores"}, {"ingreso": 500000, "costo": 12574129, "resultado": -12074129, "margen": -2414.8, "ano": 2025, "grupo": "Destroncadores"}, {"ingreso": 52070380, "costo": 46830260, "resultado": 5240120, "margen": 10.1, "ano": 2025, "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 5729856, "resultado": -5729856, "margen": -100, "ano": 2025, "grupo": "Otras"}, {"ingreso": 1135000, "costo": 4370398, "resultado": -3235398, "margen": -285.1, "ano": 2026, "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 0, "costo": 1163702, "resultado": -1163702, "margen": -100, "ano": 2026, "grupo": "Camionetas"}, {"ingreso": 9453620, "costo": 5416703, "resultado": 4036917, "margen": 42.7, "ano": 2026, "grupo": "Tractores"}, {"ingreso": 0, "costo": 121500, "resultado": -121500, "margen": -100, "ano": 2026, "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 2217525, "resultado": -2217525, "margen": -100, "ano": 2026, "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 10313557, "resultado": -10313557, "margen": -100, "ano": 2026, "grupo": "Otras"}], "resumen_cc": [{"ingreso": 0, "costo": 444047, "resultado": -444047, "margen": -100, "ano": 2024, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 450000, "costo": 3746187, "resultado": -3296187, "margen": -732.5, "ano": 2024, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "1091", "nombre": "MELGADOR (PLATABANDA)", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "1067", "nombre": "DESHOJADORA DE FRUTALES 3 CUERPOS", "grupo": "Tractores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "88", "nombre": "TRACTOR MASSEY FERGUSON 390 ROJO", "grupo": "Tractores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "1096", "nombre": "TRACTOR MASSEY MF5S", "grupo": "Tractores"}, {"ingreso": 3840000, "costo": 694360, "resultado": 3145640, "margen": 81.9, "ano": 2024, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 2760000, "costo": 5115394, "resultado": -2355394, "margen": -85.3, "ano": 2024, "cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras"}, {"ingreso": 30360000, "costo": 0, "resultado": 30360000, "margen": 100.0, "ano": 2024, "cod": "1072", "nombre": "CABEZAL MADERA TIERRA", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "31", "nombre": "TRITURADOR PIEDRA HA", "grupo": "Otras"}, {"ingreso": 167607740, "costo": 59979174, "resultado": 107628566, "margen": 64.2, "ano": 2024, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 244688, "resultado": -244688, "margen": -100, "ano": 2024, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "1097", "nombre": "PALA ENCAMELLANADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "92", "nombre": "ARADO VERTEDERA COJO ROJO 3", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "70", "nombre": "PALA NIVELADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 1566236, "resultado": -1566236, "margen": -100, "ano": 2024, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "166", "nombre": "TRITURADO PIEDRA HORA", "grupo": "Otras"}, {"ingreso": 18658500, "costo": 6106570, "resultado": 12551930, "margen": 67.3, "ano": 2024, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 2421, "resultado": -2421, "margen": -100, "ano": 2024, "cod": "1074", "nombre": "TRITURADORA SEPPI PIEDRA", "grupo": "Trituradoras"}, {"ingreso": 57810939, "costo": 19615423, "resultado": 38195516, "margen": 66.1, "ano": 2024, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 0, "costo": 139008, "resultado": -139008, "margen": -100, "ano": 2024, "cod": "1075", "nombre": "ZANJADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "95", "nombre": "PLANTADORA", "grupo": "Otras"}, {"ingreso": 3559000, "costo": 6009714, "resultado": -2450714, "margen": -68.9, "ano": 2024, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "1068", "nombre": "SUBSOLADOR IYMPA 5 PUNTAS", "grupo": "Subsoladores"}, {"ingreso": 28492249, "costo": 37656424, "resultado": -9164175, "margen": -32.2, "ano": 2024, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 73941, "costo": 8805160, "resultado": -8731219, "margen": -11808.4, "ano": 2024, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 3244156, "resultado": -3244156, "margen": -100, "ano": 2024, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 130032, "resultado": -130032, "margen": -100, "ano": 2024, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 5378, "resultado": -5378, "margen": -100, "ano": 2024, "cod": "1059", "nombre": "SOPLADOR DE HOJAS", "grupo": "Otras"}, {"ingreso": 0, "costo": 2063291, "resultado": -2063291, "margen": -100, "ano": 2024, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 17020000, "costo": 3294623, "resultado": 13725377, "margen": 80.6, "ano": 2024, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 10215029, "resultado": -10215029, "margen": -100, "ano": 2024, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 157477388, "costo": 45933960, "resultado": 111543428, "margen": 70.8, "ano": 2024, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 1129, "resultado": -1129, "margen": -100, "ano": 2025, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 500000, "costo": 10369910, "resultado": -9869910, "margen": -1974.0, "ano": 2025, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "1091", "nombre": "MELGADOR (PLATABANDA)", "grupo": "Otras"}, {"ingreso": 0, "costo": 161289, "resultado": -161289, "margen": -100, "ano": 2025, "cod": "1067", "nombre": "DESHOJADORA DE FRUTALES 3 CUERPOS", "grupo": "Tractores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "88", "nombre": "TRACTOR MASSEY FERGUSON 390 ROJO", "grupo": "Tractores"}, {"ingreso": 300000, "costo": 182652, "resultado": 117348, "margen": 39.1, "ano": 2025, "cod": "1096", "nombre": "TRACTOR MASSEY MF5S", "grupo": "Tractores"}, {"ingreso": 0, "costo": 1331228, "resultado": -1331228, "margen": -100, "ano": 2025, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 24890380, "costo": 0, "resultado": 24890380, "margen": 100.0, "ano": 2025, "cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "1072", "nombre": "CABEZAL MADERA TIERRA", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 82434, "resultado": -82434, "margen": -100, "ano": 2025, "cod": "31", "nombre": "TRITURADOR PIEDRA HA", "grupo": "Otras"}, {"ingreso": 90444000, "costo": 38287062, "resultado": 52156938, "margen": 57.7, "ano": 2025, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 1957517, "resultado": -1957517, "margen": -100, "ano": 2025, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "1097", "nombre": "PALA ENCAMELLANADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 10539044, "resultado": -10539044, "margen": -100, "ano": 2025, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "92", "nombre": "ARADO VERTEDERA COJO ROJO 3", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "70", "nombre": "PALA NIVELADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 372293, "resultado": -372293, "margen": -100, "ano": 2025, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "166", "nombre": "TRITURADO PIEDRA HORA", "grupo": "Otras"}, {"ingreso": 23989000, "costo": 5680779, "resultado": 18308221, "margen": 76.3, "ano": 2025, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 282, "resultado": -282, "margen": -100, "ano": 2025, "cod": "1074", "nombre": "TRITURADORA SEPPI PIEDRA", "grupo": "Trituradoras"}, {"ingreso": 181319980, "costo": 30354170, "resultado": 150965810, "margen": 83.3, "ano": 2025, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 0, "costo": 14587, "resultado": -14587, "margen": -100, "ano": 2025, "cod": "1075", "nombre": "ZANJADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 219, "resultado": -219, "margen": -100, "ano": 2025, "cod": "95", "nombre": "PLANTADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 3675099, "resultado": -3675099, "margen": -100, "ano": 2025, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "1068", "nombre": "SUBSOLADOR IYMPA 5 PUNTAS", "grupo": "Subsoladores"}, {"ingreso": 18901193, "costo": 46253719, "resultado": -27352526, "margen": -144.7, "ano": 2025, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 0, "costo": 8380941, "resultado": -8380941, "margen": -100, "ano": 2025, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1831926, "resultado": -1831926, "margen": -100, "ano": 2025, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 75681, "resultado": -75681, "margen": -100, "ano": 2025, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "1059", "nombre": "SOPLADOR DE HOJAS", "grupo": "Otras"}, {"ingreso": 0, "costo": 527172, "resultado": -527172, "margen": -100, "ano": 2025, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 27180000, "costo": 34959706, "resultado": -7779706, "margen": -28.6, "ano": 2025, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 7371121, "resultado": -7371121, "margen": -100, "ano": 2025, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 80889073, "costo": 42721900, "resultado": 38167173, "margen": 47.2, "ano": 2025, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 121500, "resultado": -121500, "margen": -100, "ano": 2026, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1091", "nombre": "MELGADOR (PLATABANDA)", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1067", "nombre": "DESHOJADORA DE FRUTALES 3 CUERPOS", "grupo": "Tractores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "88", "nombre": "TRACTOR MASSEY FERGUSON 390 ROJO", "grupo": "Tractores"}, {"ingreso": 0, "costo": 236122, "resultado": -236122, "margen": -100, "ano": 2026, "cod": "1096", "nombre": "TRACTOR MASSEY MF5S", "grupo": "Tractores"}, {"ingreso": 0, "costo": 6164, "resultado": -6164, "margen": -100, "ano": 2026, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1072", "nombre": "CABEZAL MADERA TIERRA", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "31", "nombre": "TRITURADOR PIEDRA HA", "grupo": "Otras"}, {"ingreso": 0, "costo": 768295, "resultado": -768295, "margen": -100, "ano": 2026, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 10000000, "resultado": -10000000, "margen": -100, "ano": 2026, "cod": "1097", "nombre": "PALA ENCAMELLANADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 60611, "resultado": -60611, "margen": -100, "ano": 2026, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "92", "nombre": "ARADO VERTEDERA COJO ROJO 3", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "70", "nombre": "PALA NIVELADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "166", "nombre": "TRITURADO PIEDRA HORA", "grupo": "Otras"}, {"ingreso": 9453620, "costo": 1323448, "resultado": 8130172, "margen": 86.0, "ano": 2026, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1074", "nombre": "TRITURADORA SEPPI PIEDRA", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 1621924, "resultado": -1621924, "margen": -100, "ano": 2026, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1075", "nombre": "ZANJADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "95", "nombre": "PLANTADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 313557, "resultado": -313557, "margen": -100, "ano": 2026, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1068", "nombre": "SUBSOLADOR IYMPA 5 PUNTAS", "grupo": "Subsoladores"}, {"ingreso": 1135000, "costo": 4370398, "resultado": -3235398, "margen": -285.1, "ano": 2026, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 0, "costo": 838586, "resultado": -838586, "margen": -100, "ano": 2026, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1059", "nombre": "SOPLADOR DE HOJAS", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 2150750, "resultado": -2150750, "margen": -100, "ano": 2026, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 325116, "resultado": -325116, "margen": -100, "ano": 2026, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1466914, "resultado": -1466914, "margen": -100, "ano": 2026, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}], "resumen_cc_mes": [{"ingreso": 0, "costo": 10187, "resultado": -10187, "margen": -100, "ano": 2024, "mes": 3, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 240000, "resultado": -240000, "margen": -100, "ano": 2024, "mes": 4, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 82792, "resultado": -82792, "margen": -100, "ano": 2024, "mes": 7, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 6403, "resultado": -6403, "margen": -100, "ano": 2024, "mes": 9, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 104665, "resultado": -104665, "margen": -100, "ano": 2024, "mes": 11, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 1129, "resultado": -1129, "margen": -100, "ano": 2025, "mes": 2, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 121500, "resultado": -121500, "margen": -100, "ano": 2026, "mes": 1, "cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 1597, "resultado": -1597, "margen": -100, "ano": 2024, "mes": 1, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 40720, "resultado": -40720, "margen": -100, "ano": 2024, "mes": 2, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 1081464, "resultado": -1081464, "margen": -100, "ano": 2024, "mes": 3, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 425248, "resultado": -425248, "margen": -100, "ano": 2024, "mes": 4, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 83715, "resultado": -83715, "margen": -100, "ano": 2024, "mes": 5, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 392492, "resultado": -392492, "margen": -100, "ano": 2024, "mes": 6, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 450000, "costo": 693666, "resultado": -243666, "margen": -54.1, "ano": 2024, "mes": 7, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 504850, "resultado": -504850, "margen": -100, "ano": 2024, "mes": 8, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 143255, "resultado": -143255, "margen": -100, "ano": 2024, "mes": 9, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 379180, "resultado": -379180, "margen": -100, "ano": 2024, "mes": 11, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 3253500, "resultado": -3253500, "margen": -100, "ano": 2025, "mes": 1, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 1003084, "resultado": -1003084, "margen": -100, "ano": 2025, "mes": 2, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 999000, "resultado": -999000, "margen": -100, "ano": 2025, "mes": 3, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 1368380, "resultado": -1368380, "margen": -100, "ano": 2025, "mes": 4, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 500000, "costo": 0, "resultado": 500000, "margen": 100.0, "ano": 2025, "mes": 6, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 1875600, "resultado": -1875600, "margen": -100, "ano": 2025, "mes": 7, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 38764, "resultado": -38764, "margen": -100, "ano": 2025, "mes": 8, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 4582, "resultado": -4582, "margen": -100, "ano": 2025, "mes": 9, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 1827000, "resultado": -1827000, "margen": -100, "ano": 2025, "mes": 10, "cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 158338, "resultado": -158338, "margen": -100, "ano": 2025, "mes": 4, "cod": "1067", "nombre": "DESHOJADORA DE FRUTALES 3 CUERPOS", "grupo": "Tractores"}, {"ingreso": 0, "costo": 2951, "resultado": -2951, "margen": -100, "ano": 2025, "mes": 9, "cod": "1067", "nombre": "DESHOJADORA DE FRUTALES 3 CUERPOS", "grupo": "Tractores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "mes": 11, "cod": "1096", "nombre": "TRACTOR MASSEY MF5S", "grupo": "Tractores"}, {"ingreso": 300000, "costo": 182652, "resultado": 117348, "margen": 39.1, "ano": 2025, "mes": 12, "cod": "1096", "nombre": "TRACTOR MASSEY MF5S", "grupo": "Tractores"}, {"ingreso": 300000, "costo": 122401, "resultado": 177599, "margen": 59.2, "ano": 2026, "mes": 1, "cod": "1096", "nombre": "TRACTOR MASSEY MF5S", "grupo": "Tractores"}, {"ingreso": -300000, "costo": 113721, "resultado": -413721, "margen": -100, "ano": 2026, "mes": 2, "cod": "1096", "nombre": "TRACTOR MASSEY MF5S", "grupo": "Tractores"}, {"ingreso": 0, "costo": 12367, "resultado": -12367, "margen": -100, "ano": 2024, "mes": 1, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 12000, "resultado": -12000, "margen": -100, "ano": 2024, "mes": 2, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 3840000, "costo": 0, "resultado": 3840000, "margen": 100.0, "ano": 2024, "mes": 3, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 119974, "resultado": -119974, "margen": -100, "ano": 2024, "mes": 5, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 31290, "resultado": -31290, "margen": -100, "ano": 2024, "mes": 6, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 9335, "resultado": -9335, "margen": -100, "ano": 2024, "mes": 7, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 487384, "resultado": -487384, "margen": -100, "ano": 2024, "mes": 8, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 22010, "resultado": -22010, "margen": -100, "ano": 2024, "mes": 9, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 10, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 10574, "resultado": -10574, "margen": -100, "ano": 2025, "mes": 1, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 628, "resultado": -628, "margen": -100, "ano": 2025, "mes": 2, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 61200, "resultado": -61200, "margen": -100, "ano": 2025, "mes": 6, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 911883, "resultado": -911883, "margen": -100, "ano": 2025, "mes": 7, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 15116, "resultado": -15116, "margen": -100, "ano": 2025, "mes": 8, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 10574, "resultado": -10574, "margen": -100, "ano": 2025, "mes": 9, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 321253, "resultado": -321253, "margen": -100, "ano": 2025, "mes": 12, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 6164, "resultado": -6164, "margen": -100, "ano": 2026, "mes": 2, "cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras"}, {"ingreso": 2760000, "costo": 0, "resultado": 2760000, "margen": 100.0, "ano": 2024, "mes": 2, "cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 199019, "resultado": -199019, "margen": -100, "ano": 2024, "mes": 6, "cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 4915854, "resultado": -4915854, "margen": -100, "ano": 2024, "mes": 8, "cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 521, "resultado": -521, "margen": -100, "ano": 2024, "mes": 9, "cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras"}, {"ingreso": 6940000, "costo": 0, "resultado": 6940000, "margen": 100.0, "ano": 2025, "mes": 6, "cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras"}, {"ingreso": 17950380, "costo": 0, "resultado": 17950380, "margen": 100.0, "ano": 2025, "mes": 11, "cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras"}, {"ingreso": 30360000, "costo": 0, "resultado": 30360000, "margen": 100.0, "ano": 2024, "mes": 10, "cod": "1072", "nombre": "CABEZAL MADERA TIERRA", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 1, "cod": "31", "nombre": "TRITURADOR PIEDRA HA", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "mes": 1, "cod": "31", "nombre": "TRITURADOR PIEDRA HA", "grupo": "Otras"}, {"ingreso": 0, "costo": 80201, "resultado": -80201, "margen": -100, "ano": 2025, "mes": 8, "cod": "31", "nombre": "TRITURADOR PIEDRA HA", "grupo": "Otras"}, {"ingreso": 0, "costo": 2233, "resultado": -2233, "margen": -100, "ano": 2025, "mes": 9, "cod": "31", "nombre": "TRITURADOR PIEDRA HA", "grupo": "Otras"}, {"ingreso": 0, "costo": 2248994, "resultado": -2248994, "margen": -100, "ano": 2024, "mes": 1, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 8150000, "costo": 7170416, "resultado": 979584, "margen": 12.0, "ano": 2024, "mes": 2, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 19435000, "costo": 4167629, "resultado": 15267371, "margen": 78.6, "ano": 2024, "mes": 3, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 49816740, "costo": 5215326, "resultado": 44601414, "margen": 89.5, "ano": 2024, "mes": 4, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 25645000, "costo": 8886046, "resultado": 16758954, "margen": 65.3, "ano": 2024, "mes": 5, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 18260000, "costo": 4384269, "resultado": 13875731, "margen": 76.0, "ano": 2024, "mes": 6, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 14219000, "costo": 2755013, "resultado": 11463987, "margen": 80.6, "ano": 2024, "mes": 7, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 17822000, "costo": 2074841, "resultado": 15747159, "margen": 88.4, "ano": 2024, "mes": 8, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 2629095, "resultado": -2629095, "margen": -100, "ano": 2024, "mes": 9, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 5750000, "costo": 2820419, "resultado": 2929581, "margen": 50.9, "ano": 2024, "mes": 10, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 1150000, "costo": 11048050, "resultado": -9898050, "margen": -860.7, "ano": 2024, "mes": 11, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 7360000, "costo": 6579076, "resultado": 780924, "margen": 10.6, "ano": 2024, "mes": 12, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 3829155, "resultado": -3829155, "margen": -100, "ano": 2025, "mes": 1, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 8510000, "costo": 4258090, "resultado": 4251910, "margen": 50.0, "ano": 2025, "mes": 2, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 14260000, "costo": 5071401, "resultado": 9188599, "margen": 64.4, "ano": 2025, "mes": 3, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 4466998, "resultado": -4466998, "margen": -100, "ano": 2025, "mes": 4, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 6770000, "costo": 1255333, "resultado": 5514667, "margen": 81.5, "ano": 2025, "mes": 5, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 33810000, "costo": 1318953, "resultado": 32491047, "margen": 96.1, "ano": 2025, "mes": 6, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 10426652, "resultado": -10426652, "margen": -100, "ano": 2025, "mes": 7, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 27094000, "costo": 189370, "resultado": 26904630, "margen": 99.3, "ano": 2025, "mes": 8, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 2674361, "resultado": -2674361, "margen": -100, "ano": 2025, "mes": 9, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 3505096, "resultado": -3505096, "margen": -100, "ano": 2025, "mes": 10, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 1169749, "resultado": -1169749, "margen": -100, "ano": 2025, "mes": 11, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 121904, "resultado": -121904, "margen": -100, "ano": 2025, "mes": 12, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 667016, "resultado": -667016, "margen": -100, "ano": 2026, "mes": 1, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 101279, "resultado": -101279, "margen": -100, "ano": 2026, "mes": 2, "cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 1, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 61124, "resultado": -61124, "margen": -100, "ano": 2024, "mes": 3, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 153697, "resultado": -153697, "margen": -100, "ano": 2024, "mes": 4, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 29867, "resultado": -29867, "margen": -100, "ano": 2024, "mes": 9, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "mes": 1, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 227700, "resultado": -227700, "margen": -100, "ano": 2025, "mes": 3, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 1563280, "resultado": -1563280, "margen": -100, "ano": 2025, "mes": 4, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 151572, "resultado": -151572, "margen": -100, "ano": 2025, "mes": 8, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 14965, "resultado": -14965, "margen": -100, "ano": 2025, "mes": 9, "cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras"}, {"ingreso": 0, "costo": 10000000, "resultado": -10000000, "margen": -100, "ano": 2026, "mes": 1, "cod": "1097", "nombre": "PALA ENCAMELLANADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 7210153, "resultado": -7210153, "margen": -100, "ano": 2025, "mes": 4, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 133610, "resultado": -133610, "margen": -100, "ano": 2025, "mes": 6, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 150781, "resultado": -150781, "margen": -100, "ano": 2025, "mes": 7, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 14345, "resultado": -14345, "margen": -100, "ano": 2025, "mes": 8, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 50337, "resultado": -50337, "margen": -100, "ano": 2025, "mes": 9, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 2952804, "resultado": -2952804, "margen": -100, "ano": 2025, "mes": 10, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 27014, "resultado": -27014, "margen": -100, "ano": 2025, "mes": 11, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 48880, "resultado": -48880, "margen": -100, "ano": 2026, "mes": 1, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 11731, "resultado": -11731, "margen": -100, "ano": 2026, "mes": 2, "cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 3058, "resultado": -3058, "margen": -100, "ano": 2024, "mes": 1, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 36605, "resultado": -36605, "margen": -100, "ano": 2024, "mes": 3, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 229974, "resultado": -229974, "margen": -100, "ano": 2024, "mes": 4, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 126017, "resultado": -126017, "margen": -100, "ano": 2024, "mes": 5, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 239889, "resultado": -239889, "margen": -100, "ano": 2024, "mes": 6, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 245091, "resultado": -245091, "margen": -100, "ano": 2024, "mes": 7, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 9876, "resultado": -9876, "margen": -100, "ano": 2024, "mes": 8, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 42675, "resultado": -42675, "margen": -100, "ano": 2024, "mes": 9, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 53190, "resultado": -53190, "margen": -100, "ano": 2024, "mes": 10, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 555013, "resultado": -555013, "margen": -100, "ano": 2024, "mes": 11, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 24848, "resultado": -24848, "margen": -100, "ano": 2024, "mes": 12, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 124814, "resultado": -124814, "margen": -100, "ano": 2025, "mes": 1, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 122047, "resultado": -122047, "margen": -100, "ano": 2025, "mes": 2, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 15200, "resultado": -15200, "margen": -100, "ano": 2025, "mes": 3, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 21157, "resultado": -21157, "margen": -100, "ano": 2025, "mes": 4, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 70082, "resultado": -70082, "margen": -100, "ano": 2025, "mes": 5, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 10856, "resultado": -10856, "margen": -100, "ano": 2025, "mes": 8, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 8137, "resultado": -8137, "margen": -100, "ano": 2025, "mes": 9, "cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 627061, "resultado": -627061, "margen": -100, "ano": 2024, "mes": 1, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 9404000, "costo": 1956195, "resultado": 7447805, "margen": 79.2, "ano": 2024, "mes": 2, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 399091, "resultado": -399091, "margen": -100, "ano": 2024, "mes": 5, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 130260, "resultado": -130260, "margen": -100, "ano": 2024, "mes": 6, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 720000, "costo": 1072591, "resultado": -352591, "margen": -49.0, "ano": 2024, "mes": 8, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 6110000, "costo": 437750, "resultado": 5672250, "margen": 92.8, "ano": 2024, "mes": 9, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 2074500, "costo": 963195, "resultado": 1111305, "margen": 53.6, "ano": 2024, "mes": 10, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 59561, "resultado": -59561, "margen": -100, "ano": 2024, "mes": 11, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 350000, "costo": 460866, "resultado": -110866, "margen": -31.7, "ano": 2024, "mes": 12, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 91900, "resultado": -91900, "margen": -100, "ano": 2025, "mes": 1, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 3400000, "costo": 117769, "resultado": 3282231, "margen": 96.5, "ano": 2025, "mes": 2, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 3000000, "costo": 736107, "resultado": 2263893, "margen": 75.5, "ano": 2025, "mes": 3, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 1000000, "costo": 783177, "resultado": 216823, "margen": 21.7, "ano": 2025, "mes": 4, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 153512, "resultado": -153512, "margen": -100, "ano": 2025, "mes": 5, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 905576, "resultado": -905576, "margen": -100, "ano": 2025, "mes": 6, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 400000, "costo": 712395, "resultado": -312395, "margen": -78.1, "ano": 2025, "mes": 7, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 9955000, "costo": 148038, "resultado": 9806962, "margen": 98.5, "ano": 2025, "mes": 8, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 1950000, "costo": 225649, "resultado": 1724351, "margen": 88.4, "ano": 2025, "mes": 9, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 727468, "resultado": -727468, "margen": -100, "ano": 2025, "mes": 10, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 4284000, "costo": 1079188, "resultado": 3204812, "margen": 74.8, "ano": 2025, "mes": 12, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 7045620, "costo": 1112556, "resultado": 5933064, "margen": 84.2, "ano": 2026, "mes": 1, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 2408000, "costo": 210892, "resultado": 2197108, "margen": 91.2, "ano": 2026, "mes": 2, "cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores"}, {"ingreso": 0, "costo": 2421, "resultado": -2421, "margen": -100, "ano": 2024, "mes": 1, "cod": "1074", "nombre": "TRITURADORA SEPPI PIEDRA", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 282, "resultado": -282, "margen": -100, "ano": 2025, "mes": 2, "cod": "1074", "nombre": "TRITURADORA SEPPI PIEDRA", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 388788, "resultado": -388788, "margen": -100, "ano": 2024, "mes": 5, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 16080000, "costo": 2483729, "resultado": 13596271, "margen": 84.6, "ano": 2024, "mes": 6, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 20271168, "costo": 4380209, "resultado": 15890959, "margen": 78.4, "ano": 2024, "mes": 7, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 10170000, "costo": 3433399, "resultado": 6736601, "margen": 66.2, "ano": 2024, "mes": 8, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 2253000, "costo": 1157355, "resultado": 1095645, "margen": 48.6, "ano": 2024, "mes": 9, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 3378771, "costo": 1109255, "resultado": 2269516, "margen": 67.2, "ano": 2024, "mes": 10, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 0, "costo": 5908755, "resultado": -5908755, "margen": -100, "ano": 2024, "mes": 11, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 5658000, "costo": 753933, "resultado": 4904067, "margen": 86.7, "ano": 2024, "mes": 12, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 0, "costo": 211308, "resultado": -211308, "margen": -100, "ano": 2025, "mes": 1, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 4500000, "costo": 1814986, "resultado": 2685014, "margen": 59.7, "ano": 2025, "mes": 2, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 2100000, "costo": 4782827, "resultado": -2682827, "margen": -127.8, "ano": 2025, "mes": 3, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 2154000, "costo": 3160791, "resultado": -1006791, "margen": -46.7, "ano": 2025, "mes": 4, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 26555000, "costo": 6179420, "resultado": 20375580, "margen": 76.7, "ano": 2025, "mes": 5, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 34930200, "costo": 1764653, "resultado": 33165547, "margen": 94.9, "ano": 2025, "mes": 6, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 50930500, "costo": 3291523, "resultado": 47638977, "margen": 93.5, "ano": 2025, "mes": 7, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 51152280, "costo": 4533615, "resultado": 46618665, "margen": 91.1, "ano": 2025, "mes": 8, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 2894000, "costo": 1001882, "resultado": 1892118, "margen": 65.4, "ano": 2025, "mes": 9, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 1664000, "costo": 1423920, "resultado": 240080, "margen": 14.4, "ano": 2025, "mes": 10, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 0, "costo": 803403, "resultado": -803403, "margen": -100, "ano": 2025, "mes": 11, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 4440000, "costo": 1385842, "resultado": 3054158, "margen": 68.8, "ano": 2025, "mes": 12, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 0, "costo": 462005, "resultado": -462005, "margen": -100, "ano": 2026, "mes": 1, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 0, "costo": 1159919, "resultado": -1159919, "margen": -100, "ano": 2026, "mes": 2, "cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores"}, {"ingreso": 0, "costo": 139008, "resultado": -139008, "margen": -100, "ano": 2024, "mes": 12, "cod": "1075", "nombre": "ZANJADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 14587, "resultado": -14587, "margen": -100, "ano": 2025, "mes": 2, "cod": "1075", "nombre": "ZANJADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 219, "resultado": -219, "margen": -100, "ano": 2025, "mes": 2, "cod": "95", "nombre": "PLANTADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 3225882, "resultado": -3225882, "margen": -100, "ano": 2024, "mes": 1, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 3559000, "costo": 981202, "resultado": 2577798, "margen": 72.4, "ano": 2024, "mes": 2, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 390825, "resultado": -390825, "margen": -100, "ano": 2024, "mes": 3, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 213280, "resultado": -213280, "margen": -100, "ano": 2024, "mes": 5, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 293258, "resultado": -293258, "margen": -100, "ano": 2024, "mes": 6, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 107458, "resultado": -107458, "margen": -100, "ano": 2024, "mes": 7, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 22067, "resultado": -22067, "margen": -100, "ano": 2024, "mes": 9, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 61430, "resultado": -61430, "margen": -100, "ano": 2024, "mes": 10, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 61507, "resultado": -61507, "margen": -100, "ano": 2024, "mes": 11, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 652805, "resultado": -652805, "margen": -100, "ano": 2024, "mes": 12, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 200000, "resultado": -200000, "margen": -100, "ano": 2025, "mes": 1, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 632841, "resultado": -632841, "margen": -100, "ano": 2025, "mes": 2, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 329194, "resultado": -329194, "margen": -100, "ano": 2025, "mes": 3, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 101556, "resultado": -101556, "margen": -100, "ano": 2025, "mes": 4, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 3494, "resultado": -3494, "margen": -100, "ano": 2025, "mes": 7, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 1958479, "resultado": -1958479, "margen": -100, "ano": 2025, "mes": 9, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 40112, "resultado": -40112, "margen": -100, "ano": 2025, "mes": 11, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 409423, "resultado": -409423, "margen": -100, "ano": 2025, "mes": 12, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 53700, "resultado": -53700, "margen": -100, "ano": 2026, "mes": 1, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 259857, "resultado": -259857, "margen": -100, "ano": 2026, "mes": 2, "cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 1, "cod": "1068", "nombre": "SUBSOLADOR IYMPA 5 PUNTAS", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "mes": 1, "cod": "1068", "nombre": "SUBSOLADOR IYMPA 5 PUNTAS", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 450204, "resultado": -450204, "margen": -100, "ano": 2024, "mes": 1, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 1680000, "costo": 2930866, "resultado": -1250866, "margen": -74.5, "ano": 2024, "mes": 2, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 1200000, "costo": 2893493, "resultado": -1693493, "margen": -141.1, "ano": 2024, "mes": 3, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 6080000, "costo": 2756324, "resultado": 3323676, "margen": 54.7, "ano": 2024, "mes": 4, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 4920612, "costo": 4995202, "resultado": -74590, "margen": -1.5, "ano": 2024, "mes": 5, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 2120000, "costo": 5339882, "resultado": -3219882, "margen": -151.9, "ano": 2024, "mes": 6, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 1351637, "costo": 2895909, "resultado": -1544272, "margen": -114.3, "ano": 2024, "mes": 7, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 4360000, "costo": 3684716, "resultado": 675284, "margen": 15.5, "ano": 2024, "mes": 8, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 1000000, "costo": 3008876, "resultado": -2008876, "margen": -200.9, "ano": 2024, "mes": 9, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 2980000, "costo": 2831487, "resultado": 148513, "margen": 5.0, "ano": 2024, "mes": 10, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 600000, "costo": 2859046, "resultado": -2259046, "margen": -376.5, "ano": 2024, "mes": 11, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 2200000, "costo": 3010419, "resultado": -810419, "margen": -36.8, "ano": 2024, "mes": 12, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 0, "costo": 3588031, "resultado": -3588031, "margen": -100, "ano": 2025, "mes": 1, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 2240000, "costo": 2924170, "resultado": -684170, "margen": -30.5, "ano": 2025, "mes": 2, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 3460000, "costo": 2942246, "resultado": 517754, "margen": 15.0, "ano": 2025, "mes": 3, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 1681193, "costo": 2886742, "resultado": -1205549, "margen": -71.7, "ano": 2025, "mes": 4, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 900000, "costo": 2942070, "resultado": -2042070, "margen": -226.9, "ano": 2025, "mes": 5, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 760000, "costo": 2898529, "resultado": -2138529, "margen": -281.4, "ano": 2025, "mes": 6, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 2320000, "costo": 11907347, "resultado": -9587347, "margen": -413.2, "ano": 2025, "mes": 7, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 5300000, "costo": 2948628, "resultado": 2351372, "margen": 44.4, "ano": 2025, "mes": 8, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 760000, "costo": 3089805, "resultado": -2329805, "margen": -306.6, "ano": 2025, "mes": 9, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 360000, "costo": 2867885, "resultado": -2507885, "margen": -696.6, "ano": 2025, "mes": 10, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 880000, "costo": 2871786, "resultado": -1991786, "margen": -226.3, "ano": 2025, "mes": 11, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 240000, "costo": 4386480, "resultado": -4146480, "margen": -1727.7, "ano": 2025, "mes": 12, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 1000000, "costo": 1549975, "resultado": -549975, "margen": -55.0, "ano": 2026, "mes": 1, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 135000, "costo": 2820423, "resultado": -2685423, "margen": -1989.2, "ano": 2026, "mes": 2, "cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria"}, {"ingreso": 0, "costo": 652369, "resultado": -652369, "margen": -100, "ano": 2024, "mes": 1, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1088477, "resultado": -1088477, "margen": -100, "ano": 2024, "mes": 2, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 836157, "resultado": -836157, "margen": -100, "ano": 2024, "mes": 3, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 724550, "resultado": -724550, "margen": -100, "ano": 2024, "mes": 4, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1101371, "resultado": -1101371, "margen": -100, "ano": 2024, "mes": 5, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 410651, "resultado": -410651, "margen": -100, "ano": 2024, "mes": 6, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1213079, "resultado": -1213079, "margen": -100, "ano": 2024, "mes": 7, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 73941, "costo": 607903, "resultado": -533962, "margen": -722.1, "ano": 2024, "mes": 8, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 335755, "resultado": -335755, "margen": -100, "ano": 2024, "mes": 9, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 213018, "resultado": -213018, "margen": -100, "ano": 2024, "mes": 10, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 606939, "resultado": -606939, "margen": -100, "ano": 2024, "mes": 11, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1014891, "resultado": -1014891, "margen": -100, "ano": 2024, "mes": 12, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 862214, "resultado": -862214, "margen": -100, "ano": 2025, "mes": 1, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1031666, "resultado": -1031666, "margen": -100, "ano": 2025, "mes": 2, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 884834, "resultado": -884834, "margen": -100, "ano": 2025, "mes": 3, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 887297, "resultado": -887297, "margen": -100, "ano": 2025, "mes": 4, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 717045, "resultado": -717045, "margen": -100, "ano": 2025, "mes": 5, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 535517, "resultado": -535517, "margen": -100, "ano": 2025, "mes": 6, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 477570, "resultado": -477570, "margen": -100, "ano": 2025, "mes": 7, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 651959, "resultado": -651959, "margen": -100, "ano": 2025, "mes": 8, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 545184, "resultado": -545184, "margen": -100, "ano": 2025, "mes": 9, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 404809, "resultado": -404809, "margen": -100, "ano": 2025, "mes": 10, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 521158, "resultado": -521158, "margen": -100, "ano": 2025, "mes": 11, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 861688, "resultado": -861688, "margen": -100, "ano": 2025, "mes": 12, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 287137, "resultado": -287137, "margen": -100, "ano": 2026, "mes": 1, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 551449, "resultado": -551449, "margen": -100, "ano": 2026, "mes": 2, "cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 36048, "resultado": -36048, "margen": -100, "ano": 2024, "mes": 2, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 26521, "resultado": -26521, "margen": -100, "ano": 2024, "mes": 3, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 36150, "resultado": -36150, "margen": -100, "ano": 2024, "mes": 5, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 1659, "resultado": -1659, "margen": -100, "ano": 2024, "mes": 6, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 367560, "resultado": -367560, "margen": -100, "ano": 2024, "mes": 7, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 10095, "resultado": -10095, "margen": -100, "ano": 2024, "mes": 8, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 151173, "resultado": -151173, "margen": -100, "ano": 2024, "mes": 9, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 2614950, "resultado": -2614950, "margen": -100, "ano": 2024, "mes": 10, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 4926, "resultado": -4926, "margen": -100, "ano": 2025, "mes": 2, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 1827000, "resultado": -1827000, "margen": -100, "ano": 2025, "mes": 10, "cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores"}, {"ingreso": 0, "costo": 2127, "resultado": -2127, "margen": -100, "ano": 2024, "mes": 1, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 10866, "resultado": -10866, "margen": -100, "ano": 2024, "mes": 4, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 54810, "resultado": -54810, "margen": -100, "ano": 2024, "mes": 5, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 8233, "resultado": -8233, "margen": -100, "ano": 2024, "mes": 6, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 47858, "resultado": -47858, "margen": -100, "ano": 2024, "mes": 7, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 6138, "resultado": -6138, "margen": -100, "ano": 2024, "mes": 9, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 2703, "resultado": -2703, "margen": -100, "ano": 2025, "mes": 2, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 24843, "resultado": -24843, "margen": -100, "ano": 2025, "mes": 3, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 35792, "resultado": -35792, "margen": -100, "ano": 2025, "mes": 4, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 7366, "resultado": -7366, "margen": -100, "ano": 2025, "mes": 8, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 4977, "resultado": -4977, "margen": -100, "ano": 2025, "mes": 9, "cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 5378, "resultado": -5378, "margen": -100, "ano": 2024, "mes": 3, "cod": "1059", "nombre": "SOPLADOR DE HOJAS", "grupo": "Otras"}, {"ingreso": 0, "costo": 4116, "resultado": -4116, "margen": -100, "ano": 2024, "mes": 1, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 166593, "resultado": -166593, "margen": -100, "ano": 2024, "mes": 2, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 208622, "resultado": -208622, "margen": -100, "ano": 2024, "mes": 3, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 232060, "resultado": -232060, "margen": -100, "ano": 2024, "mes": 4, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 767276, "resultado": -767276, "margen": -100, "ano": 2024, "mes": 5, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 642803, "resultado": -642803, "margen": -100, "ano": 2024, "mes": 6, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 23408, "resultado": -23408, "margen": -100, "ano": 2024, "mes": 7, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 12974, "resultado": -12974, "margen": -100, "ano": 2024, "mes": 8, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 5439, "resultado": -5439, "margen": -100, "ano": 2024, "mes": 9, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "mes": 1, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 2172, "resultado": -2172, "margen": -100, "ano": 2025, "mes": 2, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 510000, "resultado": -510000, "margen": -100, "ano": 2025, "mes": 5, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 15000, "resultado": -15000, "margen": -100, "ano": 2025, "mes": 6, "cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores"}, {"ingreso": 0, "costo": 935, "resultado": -935, "margen": -100, "ano": 2024, "mes": 1, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 17020000, "costo": 288344, "resultado": 16731656, "margen": 98.3, "ano": 2024, "mes": 5, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 1700977, "resultado": -1700977, "margen": -100, "ano": 2024, "mes": 6, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 197061, "resultado": -197061, "margen": -100, "ano": 2024, "mes": 7, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 5130, "resultado": -5130, "margen": -100, "ano": 2024, "mes": 8, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 97840, "resultado": -97840, "margen": -100, "ano": 2024, "mes": 9, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 323995, "resultado": -323995, "margen": -100, "ano": 2024, "mes": 11, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 680341, "resultado": -680341, "margen": -100, "ano": 2024, "mes": 12, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 6255313, "resultado": -6255313, "margen": -100, "ano": 2025, "mes": 1, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 26680000, "costo": 244049, "resultado": 26435951, "margen": 99.1, "ano": 2025, "mes": 2, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 3028081, "resultado": -3028081, "margen": -100, "ano": 2025, "mes": 3, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 444088, "resultado": -444088, "margen": -100, "ano": 2025, "mes": 4, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 18069841, "resultado": -18069841, "margen": -100, "ano": 2025, "mes": 5, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 500000, "costo": 91870, "resultado": 408130, "margen": 81.6, "ano": 2025, "mes": 6, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 422371, "resultado": -422371, "margen": -100, "ano": 2025, "mes": 7, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 468676, "resultado": -468676, "margen": -100, "ano": 2025, "mes": 8, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 110417, "resultado": -110417, "margen": -100, "ano": 2025, "mes": 9, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 3825000, "resultado": -3825000, "margen": -100, "ano": 2025, "mes": 10, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 2000000, "resultado": -2000000, "margen": -100, "ano": 2025, "mes": 12, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 2150750, "resultado": -2150750, "margen": -100, "ano": 2026, "mes": 1, "cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras"}, {"ingreso": 0, "costo": 827740, "resultado": -827740, "margen": -100, "ano": 2024, "mes": 1, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1416174, "resultado": -1416174, "margen": -100, "ano": 2024, "mes": 2, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1701290, "resultado": -1701290, "margen": -100, "ano": 2024, "mes": 3, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1043529, "resultado": -1043529, "margen": -100, "ano": 2024, "mes": 4, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 187233, "resultado": -187233, "margen": -100, "ano": 2024, "mes": 5, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 785182, "resultado": -785182, "margen": -100, "ano": 2024, "mes": 6, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 221841, "resultado": -221841, "margen": -100, "ano": 2024, "mes": 7, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1373063, "resultado": -1373063, "margen": -100, "ano": 2024, "mes": 8, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 373946, "resultado": -373946, "margen": -100, "ano": 2024, "mes": 9, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 464564, "resultado": -464564, "margen": -100, "ano": 2024, "mes": 10, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 185185, "resultado": -185185, "margen": -100, "ano": 2024, "mes": 11, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1635282, "resultado": -1635282, "margen": -100, "ano": 2024, "mes": 12, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 150888, "resultado": -150888, "margen": -100, "ano": 2025, "mes": 1, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 182955, "resultado": -182955, "margen": -100, "ano": 2025, "mes": 2, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1236940, "resultado": -1236940, "margen": -100, "ano": 2025, "mes": 3, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1444039, "resultado": -1444039, "margen": -100, "ano": 2025, "mes": 4, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 919348, "resultado": -919348, "margen": -100, "ano": 2025, "mes": 5, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 415215, "resultado": -415215, "margen": -100, "ano": 2025, "mes": 6, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 84502, "resultado": -84502, "margen": -100, "ano": 2025, "mes": 7, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 215999, "resultado": -215999, "margen": -100, "ano": 2025, "mes": 8, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1173955, "resultado": -1173955, "margen": -100, "ano": 2025, "mes": 9, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 51102, "resultado": -51102, "margen": -100, "ano": 2025, "mes": 10, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 202521, "resultado": -202521, "margen": -100, "ano": 2025, "mes": 11, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 1293657, "resultado": -1293657, "margen": -100, "ano": 2025, "mes": 12, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 93322, "resultado": -93322, "margen": -100, "ano": 2026, "mes": 1, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 231794, "resultado": -231794, "margen": -100, "ano": 2026, "mes": 2, "cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas"}, {"ingreso": 0, "costo": 56253, "resultado": -56253, "margen": -100, "ano": 2024, "mes": 1, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 363187, "resultado": -363187, "margen": -100, "ano": 2024, "mes": 2, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 9088439, "resultado": -9088439, "margen": -100, "ano": 2024, "mes": 3, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 18900000, "costo": 5060609, "resultado": 13839391, "margen": 73.2, "ano": 2024, "mes": 4, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 4488619, "resultado": -4488619, "margen": -100, "ano": 2024, "mes": 5, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 7200000, "costo": 3610513, "resultado": 3589487, "margen": 49.9, "ano": 2024, "mes": 6, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 9476000, "costo": 3484757, "resultado": 5991243, "margen": 63.2, "ano": 2024, "mes": 7, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 70027557, "costo": 6562004, "resultado": 63465553, "margen": 90.6, "ano": 2024, "mes": 8, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 16284000, "costo": 1276796, "resultado": 15007204, "margen": 92.2, "ano": 2024, "mes": 9, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 1035000, "costo": 913289, "resultado": 121711, "margen": 11.8, "ano": 2024, "mes": 10, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 7688416, "resultado": -7688416, "margen": -100, "ano": 2024, "mes": 11, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 34554831, "costo": 3341078, "resultado": 31213753, "margen": 90.3, "ano": 2024, "mes": 12, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 1903313, "resultado": -1903313, "margen": -100, "ano": 2025, "mes": 1, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 10143000, "costo": 11959058, "resultado": -1816058, "margen": -17.9, "ano": 2025, "mes": 2, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 916050, "resultado": -916050, "margen": -100, "ano": 2025, "mes": 3, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 22070000, "costo": 8656049, "resultado": 13413951, "margen": 60.8, "ano": 2025, "mes": 4, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 2506353, "costo": 4575447, "resultado": -2069094, "margen": -82.6, "ano": 2025, "mes": 5, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 25020720, "costo": 1525655, "resultado": 23495065, "margen": 93.9, "ano": 2025, "mes": 6, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 3227476, "resultado": -3227476, "margen": -100, "ano": 2025, "mes": 7, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 4854442, "resultado": -4854442, "margen": -100, "ano": 2025, "mes": 8, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 10638000, "costo": 578025, "resultado": 10059975, "margen": 94.6, "ano": 2025, "mes": 9, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 852355, "resultado": -852355, "margen": -100, "ano": 2025, "mes": 10, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 10511000, "costo": 457170, "resultado": 10053830, "margen": 95.7, "ano": 2025, "mes": 11, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 3216860, "resultado": -3216860, "margen": -100, "ano": 2025, "mes": 12, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 791871, "resultado": -791871, "margen": -100, "ano": 2026, "mes": 1, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}, {"ingreso": 0, "costo": 675043, "resultado": -675043, "margen": -100, "ano": 2026, "mes": 2, "cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores"}], "ingresos_detalle": [{"cod": "1061", "ano": 2024, "cuenta": "Servicios Campo", "monto": 450000}, {"cod": "1061", "ano": 2025, "cuenta": "Servicios Campo", "monto": 500000}, {"cod": "1096", "ano": 2025, "cuenta": "Servicios Campo", "monto": 300000}, {"cod": "1057", "ano": 2024, "cuenta": "Servicios Campo", "monto": 3840000}, {"cod": "1071", "ano": 2024, "cuenta": "Servicios Campo", "monto": 2760000}, {"cod": "1071", "ano": 2025, "cuenta": "Servicios Campo", "monto": 24890380}, {"cod": "1072", "ano": 2024, "cuenta": "Servicios Campo", "monto": 30360000}, {"cod": "1070", "ano": 2024, "cuenta": "Servicios Campo", "monto": 167491000}, {"cod": "1070", "ano": 2024, "cuenta": "Venta Insumos Packing", "monto": 116740}, {"cod": "1070", "ano": 2025, "cuenta": "Servicios Campo", "monto": 90444000}, {"cod": "1062", "ano": 2024, "cuenta": "Servicios Campo", "monto": 8184500}, {"cod": "1062", "ano": 2024, "cuenta": "Ventas Producción", "monto": 10474000}, {"cod": "1062", "ano": 2025, "cuenta": "Servicios Campo", "monto": 13355000}, {"cod": "1062", "ano": 2025, "cuenta": "Ventas Producción", "monto": 10634000}, {"cod": "1062", "ano": 2026, "cuenta": "Servicios Campo", "monto": 325620}, {"cod": "1062", "ano": 2026, "cuenta": "Ventas Producción", "monto": 9128000}, {"cod": "1094", "ano": 2024, "cuenta": "Servicios Campo", "monto": 57810939}, {"cod": "1094", "ano": 2025, "cuenta": "Servicios Campo", "monto": 181319980}, {"cod": "1073", "ano": 2024, "cuenta": "Servicios Campo", "monto": 1609000}, {"cod": "1073", "ano": 2024, "cuenta": "Ventas Producción", "monto": 1950000}, {"cod": "100020", "ano": 2024, "cuenta": "Servicios Campo", "monto": 24000000}, {"cod": "100020", "ano": 2024, "cuenta": "Venta Insumos Packing", "monto": 4492249}, {"cod": "100020", "ano": 2025, "cuenta": "Servicios Campo", "monto": 18841193}, {"cod": "100020", "ano": 2025, "cuenta": "Venta de Insumos", "monto": 60000}, {"cod": "100020", "ano": 2026, "cuenta": "Servicios Campo", "monto": 1060000}, {"cod": "100020", "ano": 2026, "cuenta": "Venta de Insumos", "monto": 75000}, {"cod": "38", "ano": 2024, "cuenta": "Venta Insumos Packing", "monto": 73941}, {"cod": "1056", "ano": 2024, "cuenta": "Servicios Campo", "monto": 17020000}, {"cod": "1056", "ano": 2025, "cuenta": "Servicios Campo", "monto": 27180000}, {"cod": "1084", "ano": 2024, "cuenta": "Servicios Campo", "monto": 157477388}, {"cod": "1084", "ano": 2025, "cuenta": "Servicios Campo", "monto": 80889073}], "costos_detalle": [{"cod": "89", "ano": 2024, "categoria": "Mano de Obra", "monto": 106847}, {"cod": "89", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 97200}, {"cod": "89", "ano": 2024, "categoria": "Fletes", "monto": 240000}, {"cod": "89", "ano": 2025, "categoria": "Mano de Obra", "monto": 1129}, {"cod": "89", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 121500}, {"cod": "1061", "ano": 2024, "categoria": "Mano de Obra", "monto": 561454}, {"cod": "1061", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 3184733}, {"cod": "1061", "ano": 2025, "categoria": "Mano de Obra", "monto": 49306}, {"cod": "1061", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 10320604}, {"cod": "1067", "ano": 2025, "categoria": "Mano de Obra", "monto": 161289}, {"cod": "1096", "ano": 2025, "categoria": "Mano de Obra", "monto": 182652}, {"cod": "1096", "ano": 2026, "categoria": "Mano de Obra", "monto": 153689}, {"cod": "1096", "ano": 2026, "categoria": "Combustible", "monto": 82433}, {"cod": "1057", "ano": 2024, "categoria": "Mano de Obra", "monto": 303621}, {"cod": "1057", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 290739}, {"cod": "1057", "ano": 2024, "categoria": "Fletes", "monto": 100000}, {"cod": "1057", "ano": 2025, "categoria": "Mano de Obra", "monto": 157945}, {"cod": "1057", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 933283}, {"cod": "1057", "ano": 2025, "categoria": "Fletes", "monto": 240000}, {"cod": "1057", "ano": 2026, "categoria": "Mano de Obra", "monto": 6164}, {"cod": "1071", "ano": 2024, "categoria": "Mano de Obra", "monto": 9540}, {"cod": "1071", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 4915854}, {"cod": "1071", "ano": 2024, "categoria": "Fletes", "monto": 190000}, {"cod": "31", "ano": 2025, "categoria": "Mano de Obra", "monto": 54486}, {"cod": "31", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 27948}, {"cod": "1070", "ano": 2024, "categoria": "Mano de Obra", "monto": 12043884}, {"cod": "1070", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 28555561}, {"cod": "1070", "ano": 2024, "categoria": "Combustible", "monto": 4959729}, {"cod": "1070", "ano": 2024, "categoria": "Fletes", "monto": 14420000}, {"cod": "1070", "ano": 2025, "categoria": "Mano de Obra", "monto": 4082099}, {"cod": "1070", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 27987477}, {"cod": "1070", "ano": 2025, "categoria": "Combustible", "monto": 398219}, {"cod": "1070", "ano": 2025, "categoria": "Fletes", "monto": 5610000}, {"cod": "1070", "ano": 2025, "categoria": "Materiales", "monto": 189267}, {"cod": "1070", "ano": 2025, "categoria": "Gastos Generales", "monto": 20000}, {"cod": "1070", "ano": 2026, "categoria": "Mano de Obra", "monto": 115583}, {"cod": "1070", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 652712}, {"cod": "1069", "ano": 2024, "categoria": "Mano de Obra", "monto": 50188}, {"cod": "1069", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 44500}, {"cod": "1069", "ano": 2024, "categoria": "Fletes", "monto": 150000}, {"cod": "1069", "ano": 2025, "categoria": "Mano de Obra", "monto": 202237}, {"cod": "1069", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 1755280}, {"cod": "1097", "ano": 2026, "categoria": "Materiales", "monto": 10000000}, {"cod": "1095", "ano": 2025, "categoria": "Mano de Obra", "monto": 644046}, {"cod": "1095", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 9544998}, {"cod": "1095", "ano": 2025, "categoria": "Fletes", "monto": 350000}, {"cod": "1095", "ano": 2026, "categoria": "Mano de Obra", "monto": 30611}, {"cod": "1095", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 30000}, {"cod": "1055", "ano": 2024, "categoria": "Mano de Obra", "monto": 920304}, {"cod": "1055", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 645932}, {"cod": "1055", "ano": 2025, "categoria": "Mano de Obra", "monto": 339093}, {"cod": "1055", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 33200}, {"cod": "1062", "ano": 2024, "categoria": "Mano de Obra", "monto": 3369695}, {"cod": "1062", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 985350}, {"cod": "1062", "ano": 2024, "categoria": "Combustible", "monto": 456694}, {"cod": "1062", "ano": 2024, "categoria": "Fletes", "monto": 1215000}, {"cod": "1062", "ano": 2024, "categoria": "Materiales", "monto": 79831}, {"cod": "1062", "ano": 2025, "categoria": "Mano de Obra", "monto": 2285285}, {"cod": "1062", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 102200}, {"cod": "1062", "ano": 2025, "categoria": "Combustible", "monto": 2243694}, {"cod": "1062", "ano": 2025, "categoria": "Fletes", "monto": 1040000}, {"cod": "1062", "ano": 2025, "categoria": "Materiales", "monto": 9600}, {"cod": "1062", "ano": 2026, "categoria": "Mano de Obra", "monto": 316687}, {"cod": "1062", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 511630}, {"cod": "1062", "ano": 2026, "categoria": "Combustible", "monto": 105131}, {"cod": "1062", "ano": 2026, "categoria": "Fletes", "monto": 390000}, {"cod": "1074", "ano": 2024, "categoria": "Mano de Obra", "monto": 2421}, {"cod": "1074", "ano": 2025, "categoria": "Mano de Obra", "monto": 282}, {"cod": "1094", "ano": 2024, "categoria": "Mano de Obra", "monto": 3829013}, {"cod": "1094", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 7369654}, {"cod": "1094", "ano": 2024, "categoria": "Combustible", "monto": 4256756}, {"cod": "1094", "ano": 2024, "categoria": "Fletes", "monto": 4160000}, {"cod": "1094", "ano": 2025, "categoria": "Mano de Obra", "monto": 11287582}, {"cod": "1094", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 7771714}, {"cod": "1094", "ano": 2025, "categoria": "Combustible", "monto": 2392127}, {"cod": "1094", "ano": 2025, "categoria": "Fletes", "monto": 8120000}, {"cod": "1094", "ano": 2025, "categoria": "Materiales", "monto": 742647}, {"cod": "1094", "ano": 2025, "categoria": "Gastos Generales", "monto": 40100}, {"cod": "1094", "ano": 2026, "categoria": "Mano de Obra", "monto": 383836}, {"cod": "1094", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 211050}, {"cod": "1094", "ano": 2026, "categoria": "Combustible", "monto": 827038}, {"cod": "1094", "ano": 2026, "categoria": "Fletes", "monto": 200000}, {"cod": "1075", "ano": 2024, "categoria": "Mano de Obra", "monto": 139008}, {"cod": "1075", "ano": 2025, "categoria": "Mano de Obra", "monto": 14587}, {"cod": "95", "ano": 2025, "categoria": "Mano de Obra", "monto": 219}, {"cod": "1073", "ano": 2024, "categoria": "Mano de Obra", "monto": 1390024}, {"cod": "1073", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 3117009}, {"cod": "1073", "ano": 2024, "categoria": "Fletes", "monto": 1502681}, {"cod": "1073", "ano": 2025, "categoria": "Mano de Obra", "monto": 880568}, {"cod": "1073", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 494531}, {"cod": "1073", "ano": 2025, "categoria": "Fletes", "monto": 300000}, {"cod": "1073", "ano": 2025, "categoria": "Gastos Generales", "monto": 50000}, {"cod": "1073", "ano": 2025, "categoria": "Otros", "monto": 1950000}, {"cod": "1073", "ano": 2026, "categoria": "Mano de Obra", "monto": 277431}, {"cod": "1073", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 36126}, {"cod": "100020", "ano": 2024, "categoria": "Mano de Obra", "monto": 37556835}, {"cod": "100020", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 23958}, {"cod": "100020", "ano": 2024, "categoria": "Combustible", "monto": 370168}, {"cod": "100020", "ano": 2024, "categoria": "Fletes", "monto": -2360000}, {"cod": "100020", "ano": 2024, "categoria": "Materiales", "monto": 25680}, {"cod": "100020", "ano": 2024, "categoria": "Comunicaciones", "monto": 1362325}, {"cod": "100020", "ano": 2024, "categoria": "Gastos Generales", "monto": 352820}, {"cod": "100020", "ano": 2024, "categoria": "Otros", "monto": 324638}, {"cod": "100020", "ano": 2025, "categoria": "Mano de Obra", "monto": 34805148}, {"cod": "100020", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 9632319}, {"cod": "100020", "ano": 2025, "categoria": "Materiales", "monto": 53844}, {"cod": "100020", "ano": 2025, "categoria": "Seguros", "monto": 781436}, {"cod": "100020", "ano": 2025, "categoria": "Comunicaciones", "monto": 680946}, {"cod": "100020", "ano": 2025, "categoria": "Gastos Generales", "monto": 300026}, {"cod": "100020", "ano": 2026, "categoria": "Mano de Obra", "monto": 5499418}, {"cod": "100020", "ano": 2026, "categoria": "Mantención y Reparación", "monto": -1244340}, {"cod": "100020", "ano": 2026, "categoria": "Comunicaciones", "monto": 115320}, {"cod": "38", "ano": 2024, "categoria": "Mano de Obra", "monto": 105187}, {"cod": "38", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 2044105}, {"cod": "38", "ano": 2024, "categoria": "Combustible", "monto": 5027342}, {"cod": "38", "ano": 2024, "categoria": "Seguros", "monto": 7790}, {"cod": "38", "ano": 2024, "categoria": "Comunicaciones", "monto": 5300}, {"cod": "38", "ano": 2024, "categoria": "Gastos Generales", "monto": 1615436}, {"cod": "38", "ano": 2025, "categoria": "Mano de Obra", "monto": 841533}, {"cod": "38", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 1711433}, {"cod": "38", "ano": 2025, "categoria": "Combustible", "monto": 4237593}, {"cod": "38", "ano": 2025, "categoria": "Gastos Generales", "monto": 1590382}, {"cod": "38", "ano": 2026, "categoria": "Mano de Obra", "monto": 32353}, {"cod": "38", "ano": 2026, "categoria": "Combustible", "monto": 530153}, {"cod": "38", "ano": 2026, "categoria": "Gastos Generales", "monto": 276080}, {"cod": "1054", "ano": 2024, "categoria": "Mano de Obra", "monto": 99325}, {"cod": "1054", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 3144831}, {"cod": "1054", "ano": 2025, "categoria": "Mano de Obra", "monto": 4926}, {"cod": "1054", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 1827000}, {"cod": "1052", "ano": 2024, "categoria": "Mano de Obra", "monto": 82174}, {"cod": "1052", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 47858}, {"cod": "1052", "ano": 2025, "categoria": "Mano de Obra", "monto": 75681}, {"cod": "1059", "ano": 2024, "categoria": "Mano de Obra", "monto": 5378}, {"cod": "1060", "ano": 2024, "categoria": "Mano de Obra", "monto": 442021}, {"cod": "1060", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 1621270}, {"cod": "1060", "ano": 2025, "categoria": "Mano de Obra", "monto": 2172}, {"cod": "1060", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 525000}, {"cod": "1056", "ano": 2024, "categoria": "Mano de Obra", "monto": 1002718}, {"cod": "1056", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 2291905}, {"cod": "1056", "ano": 2025, "categoria": "Mano de Obra", "monto": 3074583}, {"cod": "1056", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 31885123}, {"cod": "1056", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 2150750}, {"cod": "1041", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 3244227}, {"cod": "1041", "ano": 2024, "categoria": "Combustible", "monto": 5698915}, {"cod": "1041", "ano": 2024, "categoria": "Seguros", "monto": 7490}, {"cod": "1041", "ano": 2024, "categoria": "Gastos Generales", "monto": 1264397}, {"cod": "1041", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 1685634}, {"cod": "1041", "ano": 2025, "categoria": "Combustible", "monto": 4842518}, {"cod": "1041", "ano": 2025, "categoria": "Gastos Generales", "monto": 842969}, {"cod": "1041", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 180672}, {"cod": "1041", "ano": 2026, "categoria": "Gastos Generales", "monto": 144444}, {"cod": "1084", "ano": 2024, "categoria": "Mano de Obra", "monto": 11668233}, {"cod": "1084", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 21653707}, {"cod": "1084", "ano": 2024, "categoria": "Combustible", "monto": 5152189}, {"cod": "1084", "ano": 2024, "categoria": "Fletes", "monto": 7380000}, {"cod": "1084", "ano": 2024, "categoria": "Materiales", "monto": 79831}, {"cod": "1084", "ano": 2025, "categoria": "Mano de Obra", "monto": 10518974}, {"cod": "1084", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 23538656}, {"cod": "1084", "ano": 2025, "categoria": "Combustible", "monto": 2711624}, {"cod": "1084", "ano": 2025, "categoria": "Fletes", "monto": 5210000}, {"cod": "1084", "ano": 2025, "categoria": "Materiales", "monto": 742646}, {"cod": "1084", "ano": 2026, "categoria": "Mano de Obra", "monto": 385908}, {"cod": "1084", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 290000}, {"cod": "1084", "ano": 2026, "categoria": "Combustible", "monto": 341006}, {"cod": "1084", "ano": 2026, "categoria": "Fletes", "monto": 450000}], "catalogo": [{"cod": "100020", "nombre": "CHAM - SERVICIOS EXTERNOS MAQUINARIA", "grupo": "Servicios Externos Maquinaria", "nota": "CC Padre"}, {"cod": "1041", "nombre": "CAMIONETA ALBERTO", "grupo": "Camionetas", "nota": ""}, {"cod": "38", "nombre": "CAMIONETA MAHINDRA", "grupo": "Camionetas", "nota": ""}, {"cod": "1084", "nombre": "TRACTOR MASSEY FERGUSON 8737", "grupo": "Tractores", "nota": ""}, {"cod": "1094", "nombre": "TRACTOR MASSEY FERGUSON 2024", "grupo": "Tractores", "nota": ""}, {"cod": "88", "nombre": "TRACTOR MASSEY FERGUSON 390 ROJO", "grupo": "Tractores", "nota": ""}, {"cod": "1070", "nombre": "MAQUINA ORUGA (MULCHER)", "grupo": "Tractores", "nota": ""}, {"cod": "1096", "nombre": "TRACTOR MASSEY MF5S", "grupo": "Tractores", "nota": ""}, {"cod": "1062", "nombre": "TRACTOR VALTRA", "grupo": "Tractores", "nota": ""}, {"cod": "1067", "nombre": "DESHOJADORA DE FRUTALES 3 CUERPOS", "grupo": "Tractores", "nota": ""}, {"cod": "1060", "nombre": "SUBSOLADORES", "grupo": "Subsoladores", "nota": "CC Madre"}, {"cod": "89", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO (BETO)", "grupo": "Subsoladores", "nota": ""}, {"cod": "1052", "nombre": "SUBSOLADOR 5 PUNTAS ROJO Y NEGRO", "grupo": "Subsoladores", "nota": ""}, {"cod": "1068", "nombre": "SUBSOLADOR IYMPA 5 PUNTAS", "grupo": "Subsoladores", "nota": ""}, {"cod": "1061", "nombre": "DESTRONCADORES", "grupo": "Destroncadores", "nota": "CC Madre"}, {"cod": "1055", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores", "nota": ""}, {"cod": "1054", "nombre": "DESTRONCADORA ROJA", "grupo": "Destroncadores", "nota": ""}, {"cod": "1056", "nombre": "TRITURADORA STARFORST II MECC", "grupo": "Trituradoras", "nota": ""}, {"cod": "1095", "nombre": "TRITURADORA STARFORST 235", "grupo": "Trituradoras", "nota": ""}, {"cod": "1057", "nombre": "TRITURADORA SEPPI MINIFORST PICK-UP", "grupo": "Trituradoras", "nota": ""}, {"cod": "1071", "nombre": "CABEZAL MADERA AÉREO", "grupo": "Trituradoras", "nota": ""}, {"cod": "1072", "nombre": "CABEZAL MADERA TIERRA", "grupo": "Trituradoras", "nota": ""}, {"cod": "1074", "nombre": "TRITURADORA SEPPI PIEDRA", "grupo": "Trituradoras", "nota": ""}, {"cod": "92", "nombre": "ARADO VERTEDERA COJO ROJO 3", "grupo": "Otras", "nota": ""}, {"cod": "1059", "nombre": "SOPLADOR DE HOJAS", "grupo": "Otras", "nota": ""}, {"cod": "1069", "nombre": "RASTRA BALDAN", "grupo": "Otras", "nota": ""}, {"cod": "70", "nombre": "PALA NIVELADORA", "grupo": "Otras", "nota": ""}, {"cod": "1073", "nombre": "CHAPODADORA", "grupo": "Otras", "nota": ""}, {"cod": "1075", "nombre": "ZANJADORA", "grupo": "Otras", "nota": ""}, {"cod": "1097", "nombre": "PALA ENCAMELLANADORA", "grupo": "Otras", "nota": ""}, {"cod": "1091", "nombre": "MELGADOR (PLATABANDA)", "grupo": "Otras", "nota": ""}, {"cod": "95", "nombre": "PLANTADORA", "grupo": "Otras", "nota": ""}, {"cod": "166", "nombre": "TRITURADO PIEDRA HORA", "grupo": "Otras", "nota": ""}, {"cod": "31", "nombre": "TRITURADOR PIEDRA HA", "grupo": "Otras", "nota": ""}]};
+const SUPA_URL = 'https://wjbwccacjdkuejcriode.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqYndjY2FjamRrdWVqY3Jpb2RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5ODY0ODksImV4cCI6MjA5MzU2MjQ4OX0.ZA2zLzyvs0sRRn9GcHYibkUrjT_ytEOij38-P0vWOuo';
+const db = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-const GRUPOS_ORDEN = ['Servicios Externos Maquinaria','Camionetas','Tractores','Subsoladores','Destroncadores','Trituradoras','Otras'];
 const GRUPO_COLOR = {
   'Servicios Externos Maquinaria':'#6B7280','Camionetas':'#F59E0B','Tractores':'#3B82F6',
   'Subsoladores':'#8B5CF6','Destroncadores':'#EC4899','Trituradoras':'#10B981','Otras':'#64748B'
 };
+const DEFAULT_COLOR = '#94A3B8';
 
-let state = {
-  year: 2025,
-  month: 0,  // 0 = todo el año, 1-12 = mes específico
-  selectedGrupo: '',
-  selectedMaq: '',
-};
+let GRUPOS_ORDEN = [];
+let DATA = null;
+let state = { year: 2025, month: 0, selectedGrupo: '', selectedMaq: '' };
 let charts = {};
 
 const fCLP = v => new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',minimumFractionDigits:0}).format(v);
 const fM = v => { const a=Math.abs(v),s=v<0?'-':''; if(a>=1e9) return s+'$'+(a/1e9).toFixed(1).replace('.',',')+' B'; if(a>=1e6) return s+'$'+(a/1e6).toFixed(1).replace('.',',')+' M'; if(a>=1e3) return s+'$'+(a/1e3).toFixed(0)+' K'; return s+'$'+a; };
 const fN = v => new Intl.NumberFormat('es-CL').format(Math.round(v));
 const fPct = v => v.toFixed(1).replace('.',',')+'%';
-const yLabel = y => y === 2026 ? '2026 (ene-feb)' : String(y);
+const yLabel = y => String(y);
+const calc = (ing, costo) => { const r = ing - costo; const m = ing > 0 ? r/ing*100 : (costo > 0 ? -100 : 0); return { resultado: r, margen: Math.round(m*10)/10 }; };
 
 function kpiHTML(label, value, sub, danger) {
   return '<div class="card"><div class="p-5">' +
@@ -172,82 +193,201 @@ function kpiHTML(label, value, sub, danger) {
     '</div></div>';
 }
 
+// =========== DATA INIT ===========
+async function initData() {
+  const [ccRes, grupoRes, catRes] = await Promise.all([
+    db.from('v_3_maqu_cc').select('*'),
+    db.from('v_3_maqu_grupo').select('*'),
+    db.from('3_chamonate_centros_costo').select('cod,nombre,grupo').eq('linea_negocio','maquinaria')
+  ]);
+
+  if (ccRes.error || grupoRes.error || catRes.error) {
+    document.getElementById('loading-overlay').innerHTML = '<p class="text-red-500 font-semibold">Error cargando datos. Revisa la consola.</p>';
+    console.error(ccRes.error, grupoRes.error, catRes.error);
+    return;
+  }
+
+  const ccRows = ccRes.data;
+  const grupoRows = grupoRes.data;
+  const catRows = catRes.data;
+
+  // catalogo
+  const catalogo = catRows.map(r => ({ cod: r.cod, nombre: r.nombre, grupo: r.grupo }));
+
+  // GRUPOS_ORDEN: unique grupos from catalog
+  const gruposSet = new Set(catRows.map(r => r.grupo).filter(Boolean));
+  GRUPOS_ORDEN = [...gruposSet].sort();
+
+  // resumen_cc: annual per CC (sum all months)
+  const ccAnnMap = {};
+  ccRows.forEach(r => {
+    const k = r.cod + '-' + r.ano;
+    if (!ccAnnMap[k]) ccAnnMap[k] = { cod:r.cod, nombre:r.nombre, grupo:r.grupo, ano:+r.ano, ingreso:0, costo:0 };
+    ccAnnMap[k].ingreso += +r.ingresos;
+    ccAnnMap[k].costo  += +r.costos;
+  });
+  const resumen_cc = Object.values(ccAnnMap).map(r => ({ ...r, ...calc(r.ingreso, r.costo) }));
+
+  // resumen_cc_mes: all rows (monthly per CC)
+  const resumen_cc_mes = ccRows.map(r => {
+    const ing = +r.ingresos, cos = +r.costos;
+    return { cod:r.cod, nombre:r.nombre, grupo:r.grupo, ano:+r.ano, mes:+r.mes, ingreso:ing, costo:cos, ...calc(ing, cos) };
+  });
+
+  // resumen_mensual: aggregate all CCs per year+month
+  const mensMap = {};
+  resumen_cc_mes.forEach(r => {
+    const k = r.ano + '-' + r.mes;
+    if (!mensMap[k]) mensMap[k] = { ano:r.ano, mes:r.mes, ingreso:0, costo:0 };
+    mensMap[k].ingreso += r.ingreso;
+    mensMap[k].costo  += r.costo;
+  });
+  const resumen_mensual = Object.values(mensMap).map(r => ({ ...r, ...calc(r.ingreso, r.costo) })).sort((a,b)=>a.ano-b.ano||a.mes-b.mes);
+
+  // resumen_anual: sum all months per year
+  const anoMap = {};
+  resumen_mensual.forEach(r => {
+    if (!anoMap[r.ano]) anoMap[r.ano] = { ano:r.ano, ingreso:0, costo:0 };
+    anoMap[r.ano].ingreso += r.ingreso;
+    anoMap[r.ano].costo  += r.costo;
+  });
+  const resumen_anual = Object.values(anoMap).map(r => ({ ...r, ...calc(r.ingreso, r.costo) })).sort((a,b)=>a.ano-b.ano);
+
+  // resumen_grupo: annual per grupo (from v_3_maqu_grupo)
+  const grpAnnMap = {};
+  grupoRows.forEach(r => {
+    const k = r.grupo + '-' + r.ano;
+    if (!grpAnnMap[k]) grpAnnMap[k] = { grupo:r.grupo, ano:+r.ano, mes:0, ingreso:0, costo:0 };
+    grpAnnMap[k].ingreso += +r.ingresos;
+    grpAnnMap[k].costo  += +r.costos;
+  });
+  const resumen_grupo = Object.values(grpAnnMap).map(r => ({ ...r, ...calc(r.ingreso, r.costo) }));
+
+  DATA = { resumen_anual, resumen_mensual, resumen_grupo, resumen_cc, resumen_cc_mes, catalogo };
+
+  // Set default year to latest
+  if (resumen_anual.length) state.year = resumen_anual[resumen_anual.length - 1].ano;
+
+  document.getElementById('loading-overlay').style.display = 'none';
+  makeGlobalPills();
+  makeMonthSelect();
+  renderGeneral();
+}
+
+// =========== FILTERS ===========
+function getAvailableYears() {
+  return [...new Set(DATA.resumen_anual.map(r => r.ano))].sort();
+}
+
+function getAvailableMonths(y) {
+  return [...new Set(DATA.resumen_mensual.filter(r => r.ano === y && (r.ingreso !== 0 || r.costo !== 0)).map(r => r.mes))].sort((a,b)=>a-b);
+}
+
+function getFilteredAnual() {
+  if (state.month === 0) return DATA.resumen_anual.find(r => r.ano === state.year) || {ingreso:0,costo:0,resultado:0,margen:0};
+  const m = DATA.resumen_mensual.find(r => r.ano === state.year && r.mes === state.month);
+  return m || {ingreso:0,costo:0,resultado:0,margen:0};
+}
+
+function getFilteredCC() {
+  if (state.month === 0) return DATA.resumen_cc.filter(r => r.ano === state.year);
+  return DATA.resumen_cc_mes.filter(r => r.ano === state.year && r.mes === state.month);
+}
+
+function getFilteredGrupo() {
+  if (state.month === 0) return DATA.resumen_grupo.filter(r => r.ano === state.year);
+  const acc = {};
+  GRUPOS_ORDEN.forEach(u => acc[u] = {ingreso:0, costo:0});
+  DATA.resumen_cc_mes.filter(r => r.ano === state.year && r.mes === state.month).forEach(r => {
+    if (acc[r.grupo]) { acc[r.grupo].ingreso += r.ingreso; acc[r.grupo].costo += r.costo; }
+  });
+  return GRUPOS_ORDEN.map(u => {
+    const x = acc[u];
+    return { grupo:u, ano:state.year, ingreso:x.ingreso, costo:x.costo, ...calc(x.ingreso, x.costo) };
+  });
+}
+
+function periodoLabel() {
+  return state.month === 0 ? yLabel(state.year) : MESES[state.month] + ' ' + state.year;
+}
+
+function makeGlobalPills() {
+  const c = document.getElementById('year-pills-global');
+  c.innerHTML = '';
+  getAvailableYears().forEach(y => {
+    const b = document.createElement('button');
+    b.className = 'pill px-4 py-1.5 rounded-full text-xs font-semibold ' + (y === state.year ? 'active' : 'bg-gray-100 text-gray-500');
+    b.textContent = yLabel(y);
+    b.addEventListener('click', () => { state.year = y; state.month = 0; makeGlobalPills(); makeMonthSelect(); rerender(); });
+    c.appendChild(b);
+  });
+}
+
+function makeMonthSelect() {
+  const sel = document.getElementById('month-select-global');
+  const meses = getAvailableMonths(state.year);
+  let opts = '<option value="0">Todo el año</option>';
+  meses.forEach(m => { opts += '<option value="' + m + '"' + (m === state.month ? ' selected' : '') + '>' + MESES[m] + '</option>'; });
+  sel.innerHTML = opts;
+  sel.value = state.month;
+  sel.onchange = () => { state.month = +sel.value; rerender(); };
+}
+
+function rerender() {
+  const activeTab = document.querySelector('[data-tab].visible')?.dataset.tab || 'general';
+  switchTab(activeTab);
+}
+
 function switchTab(id) {
-  document.querySelectorAll('[data-tab]').forEach(el=>el.classList.remove('visible'));
+  document.querySelectorAll('[data-tab]').forEach(el => el.classList.remove('visible'));
   document.querySelector('[data-tab="' + id + '"]').classList.add('visible');
-  document.querySelectorAll('#tabs .tab-btn').forEach(b=>{
-    if(b.dataset.tabid === id){ b.classList.add('active'); b.classList.remove('text-blue-200/50'); }
+  document.querySelectorAll('#tabs .tab-btn').forEach(b => {
+    if (b.dataset.tabid === id) { b.classList.add('active'); b.classList.remove('text-blue-200/50'); }
     else { b.classList.remove('active'); b.classList.add('text-blue-200/50'); }
   });
   updateBreadcrumb(id);
-  if(id==='general') renderGeneral();
-  if(id==='mensual') renderMensual();
-  if(id==='grupo') renderGrupo();
-  if(id==='cuartel') renderMaquina();
+  if (id === 'general')  renderGeneral();
+  if (id === 'mensual')  renderMensual();
+  if (id === 'grupo')    renderGrupo();
+  if (id === 'maquina')  renderMaquina();
 }
 
-document.querySelectorAll('#tabs .tab-btn').forEach(b=>{
-  b.addEventListener('click', ()=>switchTab(b.dataset.tabid));
-});
+document.querySelectorAll('#tabs .tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tabid)));
 
 function updateBreadcrumb(tabId) {
-  const map = {general:'General',mensual:'Mensual',categoria:'Por Grupo',cc:'Por Máquina'};
+  const map = {general:'General', mensual:'Mensual', grupo:'Por Grupo', maquina:'Por Máquina'};
   let parts = ['<span class="breadcrumb-item">Inicio</span>'];
-  parts.push('<span class="text-gray-300">→</span><span class="breadcrumb-item font-semibold text-gray-600">' + map[tabId] + '</span>');
-  if(tabId==='grupo' && state.selectedGrupo) parts.push('<span class="text-gray-300">→</span><span class="font-semibold" style="color:#192853">' + state.selectedGrupo + '</span>');
-  if(tabId==='maquina' && state.selectedMaq) {
-    const m = DATA.catalogo.find(x=>x.cod===state.selectedMaq);
-    if(m) parts.push('<span class="text-gray-300">→</span><span class="font-semibold" style="color:#192853">' + m.nombre + '</span>');
+  parts.push('<span class="text-gray-300">→</span><span class="breadcrumb-item font-semibold text-gray-600">' + (map[tabId] || tabId) + '</span>');
+  if (tabId === 'grupo' && state.selectedGrupo) parts.push('<span class="text-gray-300">→</span><span class="font-semibold" style="color:#192853">' + state.selectedGrupo + '</span>');
+  if (tabId === 'maquina' && state.selectedMaq) {
+    const m = DATA.catalogo.find(x => x.cod === state.selectedMaq);
+    if (m) parts.push('<span class="text-gray-300">→</span><span class="font-semibold" style="color:#192853">' + m.nombre + '</span>');
   }
   document.getElementById('breadcrumb').innerHTML = parts.join(' ');
-}
-
-function makePills(containerId, currentYear, onClick) {
-  const c = document.getElementById(containerId);
-  c.innerHTML = '';
-  [2024,2025,2026].forEach(y=>{
-    const b = document.createElement('button');
-    b.className = 'pill px-4 py-1.5 rounded-full text-xs font-semibold ' + (y===currentYear?'active':'bg-gray-100 text-gray-500');
-    b.textContent = yLabel(y);
-    b.addEventListener('click', ()=>onClick(y));
-    c.appendChild(b);
-  });
 }
 
 // =========== GENERAL ===========
 function renderGeneral() {
   const ra = DATA.resumen_anual;
-  const y = state.year;
-  const subtEl = document.getElementById('ubic-ranking-subtitulo');
-  if(subtEl) subtEl.textContent = periodoLabel();
+  document.getElementById('ubic-ranking-subtitulo').textContent = periodoLabel() + ' · Click en barra para ver detalle';
 
-  // Datos del periodo (año o año+mes)
-  const periodData = getFilteredAnual();
-  const periodCC = getFilteredCC().filter(c=>c.ingreso!==0||c.costo!==0);
-  const rentables = periodCC.filter(c=>c.resultado>0).length;
-  const perdida = periodCC.filter(c=>c.resultado<0).length;
-
+  const pd = getFilteredAnual();
+  const pdCC = getFilteredCC().filter(c => c.ingreso !== 0 || c.costo !== 0);
   document.getElementById('kpis-general').innerHTML =
-    kpiHTML('Ingresos '+periodoLabel(), fM(periodData.ingreso), '34 máquinas totales · '+periodCC.length+' activos') +
-    kpiHTML('Costos '+periodoLabel(), fM(periodData.costo), 'Operativos directos', true) +
-    kpiHTML('Resultado '+periodoLabel(), fM(periodData.resultado), 'Margen: '+fPct(periodData.margen), periodData.resultado<0) +
-    kpiHTML('CC', String(periodCC.length), rentables+' rentables · '+perdida+' en pérdida');
+    kpiHTML('Ingresos ' + periodoLabel(), fM(pd.ingreso), pdCC.length + ' CCs activos') +
+    kpiHTML('Costos ' + periodoLabel(), fM(pd.costo), 'Operativos directos', true) +
+    kpiHTML('Resultado ' + periodoLabel(), fM(pd.resultado), 'Margen: ' + fPct(pd.margen), pd.resultado < 0) +
+    kpiHTML('CC activos', String(pdCC.length), pdCC.filter(c=>c.resultado>0).length + ' rentables · ' + pdCC.filter(c=>c.resultado<0).length + ' en pérdida');
 
   let html = '<thead><tr><th class="py-2 px-3 text-left text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100"></th>';
-  ra.forEach(r=>{html+='<th class="py-2 px-3 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+yLabel(r.ano)+'</th>';});
+  ra.forEach(r => { html += '<th class="py-2 px-3 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">' + yLabel(r.ano) + '</th>'; });
   html += '</tr></thead><tbody>';
-  const rows = [
-    {l:'Ingresos', k:'ingreso', c:'text-blue-700', fmt:fCLP},
-    {l:'Costos operativos', k:'costo', c:'text-red-500', fmt:fCLP},
-    {l:'Resultado', k:'resultado', c:'', fmt:fCLP, dyn:true, bold:true, sep:true},
-    {l:'Margen %', k:'margen', c:'', fmt:fPct, dyn:true, bold:true},
-  ];
-  rows.forEach(r=>{
-    html += '<tr class="border-b border-gray-50 ' + (r.sep?'border-t-2 border-t-gray-200':'') + '">';
+  [{l:'Ingresos',k:'ingreso',c:'text-blue-700',fmt:fCLP},{l:'Costos operativos',k:'costo',c:'text-red-500',fmt:fCLP},{l:'Resultado',k:'resultado',c:'',fmt:fCLP,dyn:true,bold:true,sep:true},{l:'Margen %',k:'margen',c:'',fmt:fPct,dyn:true,bold:true}].forEach(r => {
+    html += '<tr class="border-b border-gray-50' + (r.sep?' border-t-2 border-t-gray-200':'') + '">';
     html += '<td class="py-2 px-3 text-sm ' + (r.bold?'font-bold':'font-medium') + ' text-gray-700">' + r.l + '</td>';
-    ra.forEach(rec=>{
+    ra.forEach(rec => {
       const v = rec[r.k];
-      const color = r.dyn?(v>=0?'text-emerald-600':'text-red-500'):(r.c||'text-gray-700');
+      const color = r.dyn ? (v >= 0 ? 'text-emerald-600' : 'text-red-500') : (r.c || 'text-gray-700');
       html += '<td class="py-2 px-3 text-right ' + (r.bold?'font-bold':'font-medium') + ' ' + color + '" style="font-variant-numeric:tabular-nums">' + r.fmt(v) + '</td>';
     });
     html += '</tr>';
@@ -255,7 +395,7 @@ function renderGeneral() {
   html += '</tbody>';
   document.getElementById('tabla-anual').innerHTML = html;
 
-  if(charts.anual) charts.anual.destroy();
+  if (charts.anual) charts.anual.destroy();
   charts.anual = new Chart(document.getElementById('chart-anual'), {
     type:'bar',
     data:{labels:ra.map(r=>yLabel(r.ano)),datasets:[
@@ -266,147 +406,118 @@ function renderGeneral() {
     options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false},ticks:{font:{size:12,weight:600}}}}}
   });
 
-  if(charts.margen) charts.margen.destroy();
+  if (charts.margen) charts.margen.destroy();
   charts.margen = new Chart(document.getElementById('chart-margen'), {
     type:'bar',
     data:{labels:ra.map(r=>yLabel(r.ano)),datasets:[{label:'Margen %',data:ra.map(r=>r.margen),backgroundColor:ra.map(r=>r.margen>=0?'#10B981':'#EF4444'),borderRadius:6}]},
     options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>fPct(ctx.raw)}},legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
   });
 
-  if(charts.grupo) charts.grupo.destroy();
-  const ubicTotals = {};
-  GRUPOS_ORDEN.forEach(u=>ubicTotals[u]={ing:0,costo:0,res:0});
-  getFilteredGrupo().forEach(r=>{
-    if(ubicTotals[r.grupo]){
-      ubicTotals[r.grupo].ing += r.ingreso;
-      ubicTotals[r.grupo].costo += r.costo;
-      ubicTotals[r.grupo].res += r.resultado;
-    }
+  if (charts.grupo) charts.grupo.destroy();
+  const grupoTotals = {};
+  GRUPOS_ORDEN.forEach(u => grupoTotals[u] = {ing:0,costo:0,res:0});
+  getFilteredGrupo().forEach(r => {
+    if (grupoTotals[r.grupo]) { grupoTotals[r.grupo].ing += r.ingreso; grupoTotals[r.grupo].costo += r.costo; grupoTotals[r.grupo].res += r.resultado; }
   });
-  const labelsU = GRUPOS_ORDEN.filter(u=>ubicTotals[u].ing!==0||ubicTotals[u].costo!==0);
+  const labelsG = GRUPOS_ORDEN.filter(u => grupoTotals[u].ing !== 0 || grupoTotals[u].costo !== 0);
   charts.grupo = new Chart(document.getElementById('chart-grupos'), {
     type:'bar',
-    data:{labels:labelsU,datasets:[
-      {label:'Ingresos',data:labelsU.map(u=>ubicTotals[u].ing),backgroundColor:'#192853',borderRadius:4},
-      {label:'Costos',data:labelsU.map(u=>ubicTotals[u].costo),backgroundColor:'#EF4444',borderRadius:4},
-      {label:'Resultado',data:labelsU.map(u=>ubicTotals[u].res),type:'line',borderColor:'#F59E0B',pointRadius:6,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
+    data:{labels:labelsG,datasets:[
+      {label:'Ingresos',data:labelsG.map(u=>grupoTotals[u].ing),backgroundColor:'#192853',borderRadius:4},
+      {label:'Costos',data:labelsG.map(u=>grupoTotals[u].costo),backgroundColor:'#EF4444',borderRadius:4},
+      {label:'Resultado',data:labelsG.map(u=>grupoTotals[u].res),type:'line',borderColor:'#F59E0B',pointRadius:6,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
     ]},
-    options:{responsive:true,
-      onClick:(e,els)=>{ if(els.length){ state.selectedGrupo = labelsU[els[0].index]; switchTab('grupo'); }},
-      plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false},ticks:{font:{size:11,weight:600}}}}}
+    options:{responsive:true,onClick:(e,els)=>{ if(els.length){ state.selectedGrupo=labelsG[els[0].index]; switchTab('grupo'); }},plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false},ticks:{font:{size:11,weight:600}}}}}
   });
 }
 
 // =========== MENSUAL ===========
 function renderMensual() {
   const y = state.year;
-  const meses = DATA.resumen_mensual.filter(r=>r.ano===y).sort((a,b)=>a.mes-b.mes);
+  const meses = DATA.resumen_mensual.filter(r => r.ano === y).sort((a,b) => a.mes - b.mes);
   document.getElementById('mensual-subtitulo').textContent = yLabel(y) + ' · ' + meses.length + ' meses con datos';
-
-  const total_ing = meses.reduce((s,r)=>s+r.ingreso,0);
-  const total_costo = meses.reduce((s,r)=>s+r.costo,0);
-  const total_res = total_ing - total_costo;
-  const margen = total_ing>0?(total_res/total_ing*100):0;
-  const mejor_mes = meses.length ? meses.reduce((a,b)=>a.resultado>b.resultado?a:b) : null;
-
+  const ti = meses.reduce((s,r)=>s+r.ingreso,0), tc = meses.reduce((s,r)=>s+r.costo,0);
+  const tr = ti - tc, tm = ti > 0 ? tr/ti*100 : 0;
+  const mejor = meses.length ? meses.reduce((a,b)=>a.resultado>b.resultado?a:b) : null;
   document.getElementById('kpis-mensual').innerHTML =
-    kpiHTML('Ingresos '+yLabel(y), fM(total_ing), meses.length+' meses') +
-    kpiHTML('Costos '+yLabel(y), fM(total_costo), '', true) +
-    kpiHTML('Resultado '+yLabel(y), fM(total_res), 'Margen: '+fPct(margen), total_res<0) +
-    kpiHTML('Mejor mes', mejor_mes?MESES[mejor_mes.mes]:'-', mejor_mes?fM(mejor_mes.resultado):'');
+    kpiHTML('Ingresos ' + yLabel(y), fM(ti), meses.length + ' meses') +
+    kpiHTML('Costos ' + yLabel(y), fM(tc), '', true) +
+    kpiHTML('Resultado ' + yLabel(y), fM(tr), 'Margen: ' + fPct(tm), tr < 0) +
+    kpiHTML('Mejor mes', mejor ? MESES[mejor.mes] : '-', mejor ? fM(mejor.resultado) : '');
 
-  if(charts.mensual) charts.mensual.destroy();
-  const labels = meses.map(r=>MESES[r.mes]);
+  const labels = meses.map(r => MESES[r.mes]);
+  if (charts.mensual) charts.mensual.destroy();
   charts.mensual = new Chart(document.getElementById('chart-mensual'), {
     type:'bar',
-    data:{labels:labels,datasets:[
+    data:{labels,datasets:[
       {label:'Ingresos',data:meses.map(r=>r.ingreso),backgroundColor:'#192853',borderRadius:6},
       {label:'Costos',data:meses.map(r=>r.costo),backgroundColor:'#EF4444',borderRadius:6},
       {label:'Resultado',data:meses.map(r=>r.resultado),type:'line',borderColor:'#F59E0B',pointRadius:5,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
     ]},
     options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
   });
-
-  if(charts.margenMensual) charts.margenMensual.destroy();
+  if (charts.margenMensual) charts.margenMensual.destroy();
   charts.margenMensual = new Chart(document.getElementById('chart-margen-mensual'), {
     type:'line',
-    data:{labels:labels,datasets:[{label:'Margen %',data:meses.map(r=>r.margen),borderColor:'#192853',backgroundColor:'rgba(25,40,83,0.1)',pointRadius:5,pointBackgroundColor:'#192853',borderWidth:3,fill:true,tension:0.3}]},
+    data:{labels,datasets:[{label:'Margen %',data:meses.map(r=>r.margen),borderColor:'#192853',backgroundColor:'rgba(25,40,83,0.1)',pointRadius:5,pointBackgroundColor:'#192853',borderWidth:3,fill:true,tension:0.3}]},
     options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>fPct(ctx.raw)}},legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
   });
 
-  let html = '<thead><tr><th class="py-2 px-2 text-left text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Mes</th><th class="py-2 px-2 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Ing.</th><th class="py-2 px-2 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Costo</th><th class="py-2 px-2 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Result.</th><th class="py-2 px-2 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Margen</th></tr></thead><tbody>';
-  meses.forEach(r=>{
-    html += '<tr class="border-b border-gray-50">' +
+  let th = '<thead><tr>' + ['Mes','Ingresos','Costos','Resultado','Margen'].map(h=>'<th class="py-2 px-2 text-left text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>').join('') + '</tr></thead><tbody>';
+  meses.forEach(r => {
+    th += '<tr class="border-b border-gray-50">' +
       '<td class="py-2 px-2 font-semibold text-gray-700">' + MESES[r.mes] + '</td>' +
-      '<td class="py-2 px-2 text-right text-gray-700" style="font-variant-numeric:tabular-nums">' + fM(r.ingreso) + '</td>' +
+      '<td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">' + fM(r.ingreso) + '</td>' +
       '<td class="py-2 px-2 text-right text-gray-500" style="font-variant-numeric:tabular-nums">' + fM(r.costo) + '</td>' +
       '<td class="py-2 px-2 text-right font-bold ' + (r.resultado>=0?'text-emerald-600':'text-red-500') + '" style="font-variant-numeric:tabular-nums">' + fM(r.resultado) + '</td>' +
-      '<td class="py-2 px-2 text-right"><span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (r.margen>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">' + fPct(r.margen) + '</span></td>' +
+      '<td class="py-2 px-2 text-right"><span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (r.resultado>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">' + (r.ingreso>0?fPct(r.margen):'-') + '</span></td>' +
       '</tr>';
   });
-  html += '</tbody>';
-  document.getElementById('tabla-mensual').innerHTML = html;
+  document.getElementById('tabla-mensual').innerHTML = th + '</tbody>';
 }
 
 // =========== POR GRUPO ===========
 function renderGrupo() {
-
-  const sel = document.getElementById('grupo-select');
-  if(sel.options.length === 0){
-    sel.innerHTML = '<option value="">-- Ver todos los grupos --</option>';
-    GRUPOS_ORDEN.forEach(u=>{ sel.innerHTML += '<option value="' + u + '">' + u + '</option>'; });
-    sel.addEventListener('change', ()=>{ state.selectedGrupo = sel.value; renderGrupo(); });
-  }
-  sel.value = state.selectedGrupo;
-
   const y = state.year;
-  const ubics = getFilteredGrupo();
+  updateBreadcrumb('grupo');
+  const ubics = getFilteredGrupo().filter(r => r.ingreso !== 0 || r.costo !== 0);
 
-  if(!state.selectedGrupo) {
+  if (!state.selectedGrupo) {
     document.getElementById('grupo-detail').innerHTML = '';
     let html = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">';
-    GRUPOS_ORDEN.forEach(u=>{
-      const r = ubics.find(x=>x.grupo===u);
-      if(!r || (r.ingreso===0 && r.costo===0)) return;
-      const color = r.resultado>=0?'emerald':'red';
-      const nCC = DATA.catalogo.filter(c=>c.grupo===u).length;
-      html += '<div class="card level-card" data-grupo="' + u + '">' +
-        '<div class="p-5">' +
-        '<div class="flex items-center justify-between mb-3">' +
-        '<span class="text-xs font-bold uppercase tracking-wider" style="color:' + GRUPO_COLOR[u] + '">📦 ' + u + '</span>' +
-        '<span class="text-xs text-gray-400">' + nCC + ' máquinas</span>' +
+    ubics.sort((a,b)=>b.ingreso-a.ingreso).forEach(r => {
+      const color = (GRUPO_COLOR[r.grupo] || DEFAULT_COLOR).replace('#','');
+      const hexColor = GRUPO_COLOR[r.grupo] || DEFAULT_COLOR;
+      html += '<div class="level-card card p-5" data-grupo="' + r.grupo + '">' +
+        '<div class="flex items-center gap-3 mb-3">' +
+        '<div class="w-3 h-3 rounded-full" style="background:' + hexColor + '"></div>' +
+        '<h3 class="text-sm font-bold text-gray-800 truncate">' + r.grupo + '</h3>' +
         '</div>' +
-        '<p class="text-2xl font-extrabold ' + (r.resultado>=0?'text-emerald-600':'text-red-500') + '" style="font-variant-numeric:tabular-nums">' + fM(r.resultado) + '</p>' +
         '<div class="mt-3 grid grid-cols-2 gap-2 text-xs">' +
         '<div><p class="text-gray-400 font-semibold">Ingreso</p><p class="font-bold text-gray-700">' + fM(r.ingreso) + '</p></div>' +
         '<div><p class="text-gray-400 font-semibold">Costo</p><p class="font-bold text-gray-700">' + fM(r.costo) + '</p></div>' +
         '</div>' +
         '<div class="mt-3 pt-3 border-t border-gray-100">' +
-        '<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-' + color + '-50 text-' + color + '-600">Margen ' + fPct(r.margen) + '</span>' +
-        '<span class="ml-2 text-xs text-gray-400">Click para ver máquinas →</span>' +
-        '</div>' +
+        '<span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (r.resultado>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">Margen ' + fPct(r.margen) + '</span>' +
+        '<span class="ml-2 text-xs text-gray-400">Click para máquinas →</span>' +
         '</div></div>';
     });
     html += '</div>';
     document.getElementById('grupo-summary').innerHTML = html;
-    document.querySelectorAll('#grupo-summary .level-card').forEach(card=>{
-      card.addEventListener('click', ()=>{
-        state.selectedGrupo = card.dataset.grupo;
-        renderGrupo();
-      });
+    document.querySelectorAll('#grupo-summary .level-card').forEach(card => {
+      card.addEventListener('click', () => { state.selectedGrupo = card.dataset.grupo; renderGrupo(); });
     });
   } else {
+    document.getElementById('grupo-summary').innerHTML = '';
     const u = state.selectedGrupo;
-    const r = ubics.find(x=>x.grupo===u) || {ingreso:0,costo:0,resultado:0,margen:0};
-    const cc_ubic = getFilteredCC().filter(x=>x.grupo===u);
-    const cc_activas = cc_ubic.filter(c=>c.ingreso!==0||c.costo!==0).sort((a,b)=>b.resultado-a.resultado);
+    const r = ubics.find(x => x.grupo === u) || {ingreso:0,costo:0,resultado:0,margen:0};
+    const cc_ubic = getFilteredCC().filter(x => x.grupo === u && (x.ingreso !== 0 || x.costo !== 0)).sort((a,b) => b.resultado - a.resultado);
+    const hexColor = GRUPO_COLOR[u] || DEFAULT_COLOR;
 
     let html = '<div class="card"><div class="p-5">' +
       '<div class="flex items-center justify-between mb-4">' +
-      '<div>' +
-      '<h2 class="text-base font-bold text-gray-800">📦 Grupo: <span style="color:' + GRUPO_COLOR[u] + '">' + u + '</span></h2>' +
-      '<p class="text-xs text-gray-400">' + periodoLabel() + ' · ' + cc_activas.length + ' máquinas con actividad</p>' +
-      '</div>' +
+      '<div><h2 class="text-base font-bold text-gray-800">Grupo: <span style="color:' + hexColor + '">' + u + '</span></h2>' +
+      '<p class="text-xs text-gray-400">' + periodoLabel() + ' · ' + cc_ubic.length + ' máquinas con actividad</p></div>' +
       '<button id="btn-cerrar-grupo" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>' +
       '</div>' +
       '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' +
@@ -414,50 +525,37 @@ function renderGrupo() {
       '<div class="bg-red-50 rounded-xl p-3 text-center"><p class="text-xs text-red-400 font-semibold mb-1">Costo</p><p class="text-lg font-extrabold text-red-600">' + fM(r.costo) + '</p></div>' +
       '<div class="bg-' + (r.resultado>=0?'emerald':'red') + '-50 rounded-xl p-3 text-center"><p class="text-xs text-' + (r.resultado>=0?'emerald':'red') + '-400 font-semibold mb-1">Resultado</p><p class="text-lg font-extrabold text-' + (r.resultado>=0?'emerald':'red') + '-700">' + fM(r.resultado) + '</p></div>' +
       '<div class="bg-amber-50 rounded-xl p-3 text-center"><p class="text-xs text-amber-500 font-semibold mb-1">Margen</p><p class="text-lg font-extrabold text-amber-700">' + fPct(r.margen) + '</p></div>' +
-      '</div>' +
-      '</div></div>';
+      '</div></div></div>';
 
-    html += '<div class="card mt-6"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Máquinas · click para detalle</h3>';
-    html += '<table class="w-full text-xs"><thead><tr>';
-    ['Cód','Máquina','Ingreso','Costo','Resultado','Margen'].forEach(h=>{html+='<th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>';});
-    html += '</tr></thead><tbody>';
-    cc_activas.forEach(c=>{
-      const meta = DATA.catalogo.find(x=>x.cod===c.cod) || {};
+    html += '<div class="card mt-6"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Máquinas · click para detalle individual</h3>';
+    html += '<table class="w-full text-xs"><thead><tr>' + ['Cód','Máquina','Ingreso','Costo','Resultado','Margen'].map(h=>'<th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>').join('') + '</tr></thead><tbody>';
+    cc_ubic.forEach(c => {
       html += '<tr class="border-b border-gray-50 row-hover" data-cod="' + c.cod + '">' +
         '<td class="py-2 px-2 font-bold text-gray-700">' + c.cod + '</td>' +
-        '<td class="py-2 px-2 text-gray-700">' + c.nombre + '</td>' +
-        '<td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">' + fM(c.ingreso) + '</td>' +
-        '<td class="py-2 px-2 text-right text-gray-500" style="font-variant-numeric:tabular-nums">' + fM(c.costo) + '</td>' +
-        '<td class="py-2 px-2 text-right font-bold ' + (c.resultado>=0?'text-emerald-600':'text-red-500') + '" style="font-variant-numeric:tabular-nums">' + fM(c.resultado) + '</td>' +
+        '<td class="py-2 px-2 text-gray-700 max-w-xs truncate">' + c.nombre + '</td>' +
+        '<td class="py-2 px-2 text-right">' + fM(c.ingreso) + '</td>' +
+        '<td class="py-2 px-2 text-right text-gray-500">' + fM(c.costo) + '</td>' +
+        '<td class="py-2 px-2 text-right font-bold ' + (c.resultado>=0?'text-emerald-600':'text-red-500') + '">' + fM(c.resultado) + '</td>' +
         '<td class="py-2 px-2 text-right"><span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (c.resultado>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">' + (c.ingreso>0?fPct(c.margen):'S/I') + '</span></td>' +
         '</tr>';
     });
     html += '</tbody></table></div></div>';
 
-    if(cc_activas.length > 0){
-      html += '<div class="card mt-6"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Resultado por máquina · '+u+' · '+yLabel(y)+'</h3><canvas id="chart-grupo-detalle" height="180"></canvas></div></div>';
+    if (cc_ubic.length > 0) {
+      html += '<div class="card mt-6"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Resultado por máquina · ' + u + ' · ' + periodoLabel() + '</h3><canvas id="chart-grupo-detalle" height="180"></canvas></div></div>';
     }
-
-    document.getElementById('grupo-summary').innerHTML = '';
     document.getElementById('grupo-detail').innerHTML = html;
 
-    document.getElementById('btn-cerrar-grupo').addEventListener('click', ()=>{
-      state.selectedGrupo = '';
-      renderGrupo();
+    document.getElementById('btn-cerrar-grupo').addEventListener('click', () => { state.selectedGrupo = ''; renderGrupo(); });
+    document.querySelectorAll('#grupo-detail tbody tr[data-cod]').forEach(tr => {
+      tr.addEventListener('click', () => { state.selectedMaq = tr.dataset.cod; switchTab('maquina'); });
     });
-    document.querySelectorAll('#grupo-detail tbody tr[data-cod]').forEach(tr=>{
-      tr.addEventListener('click', ()=>{
-        state.selectedMaq = tr.dataset.cod;
-        switchTab('maquina');
-      });
-    });
-
-    if(cc_activas.length > 0){
-      if(charts.grupoDetalle) charts.grupoDetalle.destroy();
-      const top = cc_activas.slice(0, 25);
-      charts.grupoDetalle = new Chart(document.getElementById('chart-grupo-detalle'),{
+    if (cc_ubic.length > 0) {
+      if (charts.grupoDetalle) charts.grupoDetalle.destroy();
+      const top = cc_ubic.slice(0, 20);
+      charts.grupoDetalle = new Chart(document.getElementById('chart-grupo-detalle'), {
         type:'bar',
-        data:{labels:top.map(c=>c.nombre.substring(0,45)),datasets:[{label:'Resultado',data:top.map(c=>c.resultado),backgroundColor:top.map(c=>c.resultado>=0?'#10B981':'#EF4444'),borderRadius:6}]},
+        data:{labels:top.map(c=>c.nombre.substring(0,40)),datasets:[{label:'Resultado',data:top.map(c=>c.resultado),backgroundColor:top.map(c=>c.resultado>=0?'#10B981':'#EF4444'),borderRadius:6}]},
         options:{indexAxis:'y',responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>fM(ctx.raw)}},legend:{display:false}},scales:{x:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},y:{ticks:{font:{size:9,weight:500}},grid:{display:false}}}}
       });
     }
@@ -466,68 +564,62 @@ function renderGrupo() {
 
 // =========== POR MÁQUINA ===========
 function renderMaquina() {
-
+  // Build select if empty
   const sel = document.getElementById('maquina-select');
-  if(sel.options.length === 0){
+  if (sel.options.length === 0) {
     sel.innerHTML = '<option value="">-- Ver todas las máquinas --</option>';
-    GRUPOS_ORDEN.forEach(u=>{
-      const opts = DATA.catalogo.filter(o=>o.grupo===u);
-      if(opts.length===0) return;
+    GRUPOS_ORDEN.forEach(u => {
+      const opts = DATA.catalogo.filter(o => o.grupo === u);
+      if (!opts.length) return;
       sel.innerHTML += '<optgroup label="' + u + '">';
-      opts.forEach(o=>{ sel.innerHTML += '<option value="' + o.cod + '">[' + o.cod + '] ' + o.nombre + '</option>'; });
+      opts.forEach(o => { sel.innerHTML += '<option value="' + o.cod + '">[' + o.cod + '] ' + o.nombre + '</option>'; });
       sel.innerHTML += '</optgroup>';
     });
-    sel.addEventListener('change', ()=>{ state.selectedMaq = sel.value; renderMaquina(); });
+    sel.addEventListener('change', () => { state.selectedMaq = sel.value; renderMaquina(); });
   }
   sel.value = state.selectedMaq;
 
+  hideMov();
+  updateBreadcrumb('maquina');
   const y = state.year;
   const cc_all = getFilteredCC();
 
-  if(!state.selectedMaq) {
-    const activas = cc_all.filter(c=>c.ingreso!==0||c.costo!==0).sort((a,b)=>b.resultado-a.resultado);
-    let html = '<div class="card"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Todos los máquinas con actividad · '+periodoLabel()+' ('+activas.length+' activos)</h3>';
-    html += '<table class="w-full text-xs"><thead><tr>';
-    ['Cód','Grupo','Máquina','Ingreso','Costo','Resultado','Margen'].forEach(h=>{html+='<th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>';});
-    html += '</tr></thead><tbody>';
-    activas.forEach(c=>{
+  if (!state.selectedMaq) {
+    const activas = cc_all.filter(c => c.ingreso !== 0 || c.costo !== 0).sort((a,b) => b.resultado - a.resultado);
+    let html = '<div class="card"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Todas las máquinas con actividad · ' + periodoLabel() + ' (' + activas.length + ' activos)</h3>';
+    html += '<table class="w-full text-xs"><thead><tr>' + ['Cód','Grupo','Máquina','Ingreso','Costo','Resultado','Margen'].map(h=>'<th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>').join('') + '</tr></thead><tbody>';
+    activas.forEach(c => {
+      const gc = GRUPO_COLOR[c.grupo] || DEFAULT_COLOR;
       html += '<tr class="border-b border-gray-50 row-hover" data-cod="' + c.cod + '">' +
         '<td class="py-2 px-2 font-bold text-gray-700">' + c.cod + '</td>' +
-        '<td class="py-2 px-2"><span class="px-2 py-0.5 rounded text-xs font-semibold" style="background:' + GRUPO_COLOR[c.grupo] + '20;color:' + GRUPO_COLOR[c.grupo] + '">' + c.grupo + '</span></td>' +
-        '<td class="py-2 px-2 text-gray-700">' + c.nombre + '</td>' +
-        '<td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">' + fM(c.ingreso) + '</td>' +
-        '<td class="py-2 px-2 text-right text-gray-500" style="font-variant-numeric:tabular-nums">' + fM(c.costo) + '</td>' +
-        '<td class="py-2 px-2 text-right font-bold ' + (c.resultado>=0?'text-emerald-600':'text-red-500') + '" style="font-variant-numeric:tabular-nums">' + fM(c.resultado) + '</td>' +
+        '<td class="py-2 px-2"><span class="px-2 py-0.5 rounded text-xs font-semibold" style="background:' + gc + '20;color:' + gc + '">' + c.grupo + '</span></td>' +
+        '<td class="py-2 px-2 text-gray-700 max-w-xs truncate">' + c.nombre + '</td>' +
+        '<td class="py-2 px-2 text-right">' + fM(c.ingreso) + '</td>' +
+        '<td class="py-2 px-2 text-right text-gray-500">' + fM(c.costo) + '</td>' +
+        '<td class="py-2 px-2 text-right font-bold ' + (c.resultado>=0?'text-emerald-600':'text-red-500') + '">' + fM(c.resultado) + '</td>' +
         '<td class="py-2 px-2 text-right"><span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (c.resultado>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">' + (c.ingreso>0?fPct(c.margen):'S/I') + '</span></td>' +
         '</tr>';
     });
     html += '</tbody></table></div></div>';
     document.getElementById('maquina-content').innerHTML = html;
-    document.querySelectorAll('#maquina-content tbody tr[data-cod]').forEach(tr=>{
-      tr.addEventListener('click', ()=>{
-        state.selectedMaq = tr.dataset.cod;
-        renderMaquina();
-      });
+    document.querySelectorAll('#maquina-content tbody tr[data-cod]').forEach(tr => {
+      tr.addEventListener('click', () => { state.selectedMaq = tr.dataset.cod; renderMaquina(); });
     });
     return;
   }
 
-  const cFiltered = cc_all.find(x=>x.cod===state.selectedMaq);
-  // Si no hay datos en el periodo filtrado, mostrar ceros
-  const c = cFiltered || {cod:state.selectedMaq, ingreso:0, costo:0, resultado:0, margen:0};
-  const meta = DATA.catalogo.find(x=>x.cod===state.selectedMaq);
-  if(!c || !meta){ document.getElementById('maquina-content').innerHTML='<div class="card p-8 text-center text-gray-400">No encontrado</div>'; return; }
+  const c = cc_all.find(x => x.cod === state.selectedMaq) || {cod:state.selectedMaq, ingreso:0, costo:0, resultado:0, margen:0};
+  const meta = DATA.catalogo.find(x => x.cod === state.selectedMaq);
+  if (!meta) { document.getElementById('maquina-content').innerHTML = '<div class="card p-8 text-center text-gray-400">No encontrado</div>'; return; }
 
-  const histo = DATA.resumen_cc.filter(x=>x.cod===state.selectedMaq).sort((a,b)=>a.ano-b.ano);
-  const meses_cc = DATA.resumen_cc_mes.filter(x=>x.cod===state.selectedMaq && x.ano===y).sort((a,b)=>a.mes-b.mes);
-  const costos_d = DATA.costos_detalle.filter(x=>x.cod===state.selectedMaq && x.ano===y).sort((a,b)=>b.monto-a.monto);
+  const histo = DATA.resumen_cc.filter(x => x.cod === state.selectedMaq).sort((a,b) => a.ano - b.ano);
+  const meses_cc = DATA.resumen_cc_mes.filter(x => x.cod === state.selectedMaq && x.ano === y).sort((a,b) => a.mes - b.mes);
+  const gc = GRUPO_COLOR[meta.grupo] || DEFAULT_COLOR;
 
   let html = '<div class="card"><div class="p-5">' +
     '<div class="flex items-center justify-between mb-4">' +
-    '<div>' +
-    '<h2 class="text-base font-bold text-gray-800">[' + meta.cod + '] ' + meta.nombre + '</h2>' +
-    '<p class="text-xs text-gray-400"><span class="font-semibold" style="color:' + GRUPO_COLOR[meta.grupo] + '">🚜 ' + meta.grupo + '</span>' + ' · ' + periodoLabel() + '</p>' +
-    '</div>' +
+    '<div><h2 class="text-base font-bold text-gray-800">[' + meta.cod + '] ' + meta.nombre + '</h2>' +
+    '<p class="text-xs text-gray-400"><span class="font-semibold" style="color:' + gc + '">🚜 ' + meta.grupo + '</span> · ' + periodoLabel() + '</p></div>' +
     '<button id="btn-cerrar-maq" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>' +
     '</div>' +
     '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' +
@@ -535,186 +627,118 @@ function renderMaquina() {
     '<div class="bg-red-50 rounded-xl p-3 text-center"><p class="text-xs text-red-400 font-semibold mb-1">Costo</p><p class="text-lg font-extrabold text-red-600">' + fM(c.costo) + '</p></div>' +
     '<div class="bg-' + (c.resultado>=0?'emerald':'red') + '-50 rounded-xl p-3 text-center"><p class="text-xs text-' + (c.resultado>=0?'emerald':'red') + '-400 font-semibold mb-1">Resultado</p><p class="text-lg font-extrabold text-' + (c.resultado>=0?'emerald':'red') + '-700">' + fM(c.resultado) + '</p></div>' +
     '<div class="bg-amber-50 rounded-xl p-3 text-center"><p class="text-xs text-amber-500 font-semibold mb-1">Margen</p><p class="text-lg font-extrabold text-amber-700">' + (c.ingreso>0?fPct(c.margen):'S/I') + '</p></div>' +
-    '</div></div></div>';
+    '</div>' +
+    '<div class="mt-4 flex justify-end">' +
+    '<button id="btn-ver-mov" class="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition-all">📄 Ver movimientos Libro Mayor</button>' +
+    '</div>' +
+    '</div></div>';
 
   html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">';
-  html += '<div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Evolución 2024-2026</h3><canvas id="chart-maq-hist"></canvas></div></div>';
-  html += '<div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Detalle mensual '+yLabel(y)+'</h3><canvas id="chart-maq-mes"></canvas></div></div>';
+  html += '<div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Evolución histórica</h3><canvas id="chart-maq-hist"></canvas></div></div>';
+  if (meses_cc.length > 0) {
+    html += '<div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Mensual ' + yLabel(y) + '</h3><canvas id="chart-maq-mes"></canvas></div></div>';
+  }
   html += '</div>';
 
-  const ingresos_d = DATA.ingresos_detalle.filter(x=>x.cod===state.selectedMaq && x.ano===y).sort((a,b)=>b.monto-a.monto);
-  if(ingresos_d.length>0){
-    const totalIng = ingresos_d.reduce((s,i)=>s+i.monto,0);
-    html += '<div class="card mt-6"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Detalle de Ingresos por Cuenta · '+yLabel(y)+'</h3><table class="w-full text-xs"><thead><tr><th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Cuenta</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Monto</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">%</th></tr></thead><tbody>';
-    ingresos_d.forEach(i=>{
-      const pct = totalIng>0?(i.monto/totalIng*100):0;
-      html += '<tr class="border-b border-gray-50"><td class="py-2 px-2 text-gray-700 font-medium">'+i.cuenta+'</td><td class="py-2 px-2 text-right text-blue-700 font-bold" style="font-variant-numeric:tabular-nums">'+fCLP(i.monto)+'</td><td class="py-2 px-2 text-right text-gray-500">'+fPct(pct)+'</td></tr>';
-    });
-    html += '<tr class="bg-blue-50 font-bold"><td class="py-2 px-2 text-blue-900">TOTAL INGRESOS</td><td class="py-2 px-2 text-right text-blue-900" style="font-variant-numeric:tabular-nums">'+fCLP(totalIng)+'</td><td class="py-2 px-2 text-right text-blue-900">100,0%</td></tr>';
-    html += '</tbody></table></div></div>';
-  }
-
-  if(costos_d.length>0){
-    const total = costos_d.reduce((s,c)=>s+c.monto,0);
-    html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"><div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Composición de costos '+yLabel(y)+'</h3><canvas id="chart-maq-costos" height="200"></canvas></div></div>';
-    html += '<div class="card"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Detalle por categoría</h3><table class="w-full text-xs"><thead><tr><th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Categoría</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Monto</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">%</th></tr></thead><tbody>';
-    costos_d.forEach(c=>{
-      const pct = total>0?(c.monto/total*100):0;
-      html += '<tr class="border-b border-gray-50"><td class="py-2 px-2 text-gray-700 font-medium">'+c.categoria+'</td><td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">'+fCLP(c.monto)+'</td><td class="py-2 px-2 text-right text-gray-500">'+fPct(pct)+'</td></tr>';
-    });
-    html += '</tbody></table></div></div></div>';
-  }
-
   document.getElementById('maquina-content').innerHTML = html;
-  document.getElementById('btn-cerrar-maq').addEventListener('click', ()=>{
-    state.selectedMaq = '';
-    renderMaquina();
-  });
 
-  if(charts.maqHist) charts.maqHist.destroy();
-  charts.maqHist = new Chart(document.getElementById('chart-maq-hist'),{
-    type:'bar',
-    data:{labels:histo.map(h=>yLabel(h.ano)),datasets:[
-      {label:'Ingreso',data:histo.map(h=>h.ingreso),backgroundColor:'#192853',borderRadius:6},
-      {label:'Costo',data:histo.map(h=>h.costo),backgroundColor:'rgba(239,68,68,0.7)',borderRadius:6},
-      {label:'Resultado',data:histo.map(h=>h.resultado),type:'line',borderColor:'#F59E0B',pointRadius:6,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
-    ]},
-    options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
-  });
+  document.getElementById('btn-cerrar-maq').addEventListener('click', () => { state.selectedMaq = ''; renderMaquina(); });
+  document.getElementById('btn-ver-mov').addEventListener('click', () => loadMovimientos(meta.cod, meta.nombre));
 
-  if(charts.maqMes) charts.maqMes.destroy();
-  if(meses_cc.length>0){
-    charts.maqMes = new Chart(document.getElementById('chart-maq-mes'),{
+  if (histo.length > 0) {
+    new Chart(document.getElementById('chart-maq-hist'), {
+      type:'bar',
+      data:{labels:histo.map(r=>yLabel(r.ano)),datasets:[
+        {label:'Ingresos',data:histo.map(r=>r.ingreso),backgroundColor:'#192853',borderRadius:6},
+        {label:'Costos',data:histo.map(r=>r.costo),backgroundColor:'#EF4444',borderRadius:6},
+        {label:'Resultado',data:histo.map(r=>r.resultado),type:'line',borderColor:'#F59E0B',pointRadius:5,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
+      ]},
+      options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:10}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
+    });
+  }
+
+  if (meses_cc.length > 0) {
+    new Chart(document.getElementById('chart-maq-mes'), {
       type:'bar',
       data:{labels:meses_cc.map(r=>MESES[r.mes]),datasets:[
-        {label:'Ingreso',data:meses_cc.map(r=>r.ingreso),backgroundColor:'#192853',borderRadius:4},
-        {label:'Costo',data:meses_cc.map(r=>r.costo),backgroundColor:'#EF4444',borderRadius:4},
+        {label:'Ingresos',data:meses_cc.map(r=>r.ingreso),backgroundColor:'#192853',borderRadius:6},
+        {label:'Costos',data:meses_cc.map(r=>r.costo),backgroundColor:'#EF4444',borderRadius:6},
         {label:'Resultado',data:meses_cc.map(r=>r.resultado),type:'line',borderColor:'#F59E0B',pointRadius:5,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
       ]},
-      options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
-    });
-  } else {
-    const cnv = document.getElementById('chart-maq-mes');
-    if(cnv) cnv.parentElement.innerHTML = '<p class="text-center text-gray-400 text-sm py-12">Sin datos mensuales</p>';
-  }
-
-  if(costos_d.length>0){
-    if(charts.maqCostos) charts.maqCostos.destroy();
-    const palette = ['#EF4444','#166534','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EC4899','#06B6D4','#F97316','#64748B','#A855F7','#14B8A6','#D97706','#EAB308'];
-    charts.maqCostos = new Chart(document.getElementById('chart-maq-costos'),{
-      type:'doughnut',
-      data:{labels:costos_d.map(c=>c.categoria),datasets:[{data:costos_d.map(c=>c.monto),backgroundColor:palette.slice(0,costos_d.length),borderWidth:2,borderColor:'#fff'}]},
-      options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.label+': '+fCLP(ctx.raw)}},legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',font:{size:10},padding:8}}}}
+      options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:10}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
     });
   }
 }
 
-// Filtros globales
-function rerenderActiveTab() {
-  const activeTab = document.querySelector('#tabs .tab-btn.active');
-  const tabid = activeTab ? activeTab.dataset.tabid : 'general';
-  if(tabid==='general') renderGeneral();
-  if(tabid==='mensual') renderMensual();
-  if(tabid==='grupo') renderGrupo();
-  if(tabid==='maquina') renderMaquina();
-}
+// =========== MOVIMIENTOS DRILL-DOWN ===========
+async function loadMovimientos(cod, nombre) {
+  document.getElementById('mov-panel').classList.add('visible');
+  document.getElementById('mov-title').textContent = 'Movimientos Libro Mayor · [' + cod + '] ' + nombre;
+  document.getElementById('mov-subtitle').textContent = periodoLabel() + ' · Cargando...';
+  document.getElementById('mov-loading').style.display = 'block';
+  document.getElementById('mov-table-wrap').style.display = 'none';
 
-function setGlobalYear(y) {
-  state.year = y;
-  // Al cambiar año, resetear mes a "todo" si el mes ya no aplica (ej. 2026 solo tiene ene-feb)
-  if(state.month > 0) {
-    const mesesDisponibles = getAvailableMonths(y);
-    if(!mesesDisponibles.includes(state.month)) state.month = 0;
+  document.getElementById('mov-panel').scrollIntoView({behavior:'smooth', block:'start'});
+
+  let query = db.from('3_chamonate_libro_mayor')
+    .select('fecha,tipo_doc,numero,glosa_enc,n_cuenta,glosa_det,debe,haber,rut,nombre')
+    .eq('c_cc', cod)
+    .eq('ano_contable', state.year)
+    .order('fecha', {ascending:true})
+    .order('numero', {ascending:true})
+    .limit(1000);
+
+  if (state.month > 0) query = query.eq('mes_contable', state.month);
+
+  const { data, error } = await query;
+
+  if (error) {
+    document.getElementById('mov-subtitle').textContent = 'Error al cargar movimientos.';
+    document.getElementById('mov-loading').innerHTML = '<p class="text-red-500">Error: ' + error.message + '</p>';
+    return;
   }
-  makeGlobalPills();
-  makeMonthSelect();
-  rerenderActiveTab();
-}
 
-function setGlobalMonth(m) {
-  state.month = m;
-  rerenderActiveTab();
-}
+  const rows = data || [];
+  document.getElementById('mov-subtitle').textContent = periodoLabel() + ' · ' + rows.length + ' movimientos' + (rows.length === 1000 ? ' (mostrando primeros 1.000)' : '');
+  document.getElementById('mov-loading').style.display = 'none';
 
-function getAvailableMonths(year) {
-  const meses = DATA.resumen_mensual.filter(r=>r.ano===year).map(r=>r.mes);
-  return Array.from(new Set(meses)).sort((a,b)=>a-b);
-}
+  const totalHaber = rows.reduce((s,r) => s + (+r.haber||0), 0);
+  const totalDebe  = rows.reduce((s,r) => s + (+r.debe||0), 0);
 
-function makeGlobalPills() {
-  const c = document.getElementById('year-pills-global');
-  c.innerHTML = '';
-  [2024,2025,2026].forEach(y=>{
-    const b = document.createElement('button');
-    b.className = 'pill px-4 py-1.5 rounded-full text-xs font-semibold ' + (y===state.year?'active':'bg-gray-100 text-gray-500');
-    b.textContent = yLabel(y);
-    b.addEventListener('click', ()=>setGlobalYear(y));
-    c.appendChild(b);
+  let html = '<div class="text-xs text-gray-500 mb-3 flex gap-6">' +
+    '<span>Total Haber: <strong class="text-blue-700">' + fCLP(totalHaber) + '</strong></span>' +
+    '<span>Total Debe: <strong class="text-red-600">' + fCLP(totalDebe) + '</strong></span>' +
+    '</div>';
+  html += '<table class="w-full text-xs min-w-max"><thead><tr>' +
+    ['Fecha','Tipo','Glosa','Cuenta','Detalle','Debe','Haber','RUT','Nombre'].map(h=>'<th class="text-left py-2 px-2 font-bold uppercase text-gray-400 border-b-2 border-gray-100 whitespace-nowrap">'+h+'</th>').join('') +
+    '</tr></thead><tbody>';
+  rows.forEach(r => {
+    const isIng = r.haber > 0, isCost = r.debe > 0;
+    html += '<tr class="border-b border-gray-50 hover:bg-blue-50/40 ' + (isIng?'':'') + '">' +
+      '<td class="py-1.5 px-2 whitespace-nowrap text-gray-600">' + (r.fecha||'') + '</td>' +
+      '<td class="py-1.5 px-2 whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">' + (r.tipo_doc||'') + '</span></td>' +
+      '<td class="py-1.5 px-2 max-w-xs truncate text-gray-700" title="' + (r.glosa_enc||'') + '">' + (r.glosa_enc||'') + '</td>' +
+      '<td class="py-1.5 px-2 whitespace-nowrap text-gray-500 font-mono text-xs">' + (r.n_cuenta||'') + '</td>' +
+      '<td class="py-1.5 px-2 max-w-xs truncate text-gray-500" title="' + (r.glosa_det||'') + '">' + (r.glosa_det||'') + '</td>' +
+      '<td class="py-1.5 px-2 text-right font-semibold ' + (r.debe>0?'text-red-600':'text-gray-300') + '" style="font-variant-numeric:tabular-nums">' + (r.debe>0?fCLP(r.debe):'-') + '</td>' +
+      '<td class="py-1.5 px-2 text-right font-semibold ' + (r.haber>0?'text-blue-700':'text-gray-300') + '" style="font-variant-numeric:tabular-nums">' + (r.haber>0?fCLP(r.haber):'-') + '</td>' +
+      '<td class="py-1.5 px-2 whitespace-nowrap text-gray-500">' + (r.rut||'') + '</td>' +
+      '<td class="py-1.5 px-2 max-w-xs truncate text-gray-600" title="' + (r.nombre||'') + '">' + (r.nombre||'') + '</td>' +
+      '</tr>';
   });
+  html += '</tbody></table>';
+
+  document.getElementById('mov-table-wrap').innerHTML = html;
+  document.getElementById('mov-table-wrap').style.display = 'block';
 }
 
-function makeMonthSelect() {
-  const sel = document.getElementById('month-select-global');
-  const meses = getAvailableMonths(state.year);
-  let opts = '<option value="0">Todo el año</option>';
-  meses.forEach(m=>{
-    opts += '<option value="' + m + '"' + (m===state.month?' selected':'') + '>' + MESES[m] + '</option>';
-  });
-  sel.innerHTML = opts;
-  sel.value = String(state.month);
-  // remove previous listener if any
-  sel.onchange = (e)=>setGlobalMonth(parseInt(e.target.value));
+function hideMov() {
+  document.getElementById('mov-panel').classList.remove('visible');
 }
 
-// Filtra resumen_cc / resumen_cc_mes según year + month seleccionados
-// Si month==0 → usa resumen_cc (totales del año). Si month>0 → usa resumen_cc_mes filtrado por ese mes
-function getFilteredCC() {
-  if(state.month === 0) {
-    return DATA.resumen_cc.filter(r=>r.ano===state.year);
-  } else {
-    return DATA.resumen_cc_mes.filter(r=>r.ano===state.year && r.mes===state.month);
-  }
-}
+document.getElementById('mov-close').addEventListener('click', hideMov);
 
-function getFilteredGrupo() {
-  // Si month==0 usa resumen_ubicacion. Si month>0, recalcula sumando resumen_cc_mes por grupo
-  if(state.month === 0) {
-    return DATA.resumen_grupo.filter(r=>r.ano===state.year);
-  } else {
-    const acc = {};
-    GRUPOS_ORDEN.forEach(u=>acc[u]={ingreso:0,costo:0});
-    DATA.resumen_cc_mes.filter(r=>r.ano===state.year && r.mes===state.month).forEach(r=>{
-      if(acc[r.grupo]){
-        acc[r.grupo].ingreso += r.ingreso;
-        acc[r.grupo].costo += r.costo;
-      }
-    });
-    return GRUPOS_ORDEN.map(u=>{
-      const x = acc[u];
-      const resultado = x.ingreso - x.costo;
-      const margen = x.ingreso>0 ? (resultado/x.ingreso*100) : (x.costo>0?-100:0);
-      return {ano:state.year, ubicacion:u, ingreso:x.ingreso, costo:x.costo, resultado, margen:Math.round(margen*10)/10};
-    });
-  }
-}
-
-function getFilteredAnual() {
-  // Totales del año con filtro de mes aplicado
-  if(state.month === 0) {
-    return DATA.resumen_anual.find(r=>r.ano===state.year) || {ingreso:0,costo:0,resultado:0,margen:0};
-  } else {
-    const m = DATA.resumen_mensual.find(r=>r.ano===state.year && r.mes===state.month);
-    return m || {ingreso:0,costo:0,resultado:0,margen:0};
-  }
-}
-
-function periodoLabel() {
-  return state.month===0 ? yLabel(state.year) : MESES[state.month] + ' ' + state.year;
-}
-
-makeGlobalPills();
-makeMonthSelect();
-renderGeneral();
+initData();
 </script>
 </body>
 </html>
