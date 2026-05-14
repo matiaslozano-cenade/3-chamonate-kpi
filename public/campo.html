@@ -766,10 +766,28 @@ function exportCSV(rows, filename) {
   URL.revokeObjectURL(a.href);
 }
 
+function showToast(msg, color) {
+  let t = document.getElementById('dl-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'dl-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99999;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.18);transition:opacity 0.3s;color:#fff;display:flex;align-items:center;gap:10px;';
+    document.body.appendChild(t);
+  }
+  t.style.background = color || '#166534';
+  t.style.opacity = '1';
+  t.textContent = msg;
+}
+function hideToast() {
+  const t = document.getElementById('dl-toast');
+  if (t) { t.style.opacity = '0'; }
+}
+
 async function downloadDetalle(params) {
   const {tipo, ano, mes, grupo, cod} = params;
   let allRows = [], from = 0;
   const PAGE = 1000;
+  showToast('⏳ Descargando detalle...', '#166534');
   while (true) {
     let q = db.from('v_3_campo_detalle').select('*');
     if (tipo && tipo !== 'ambos') q = q.eq('tipo', tipo);
@@ -779,12 +797,21 @@ async function downloadDetalle(params) {
     if (cod) q = q.eq('cc_cod', cod);
     q = q.order('fecha').order('numero').range(from, from + PAGE - 1);
     const { data, error } = await q;
-    if (error) { console.error(error); alert('Error al descargar: ' + error.message); return; }
+    if (error) {
+      hideToast();
+      showToast('❌ Error: ' + error.message, '#dc2626');
+      setTimeout(hideToast, 5000);
+      console.error(error);
+      return;
+    }
     if (!data?.length) break;
     allRows.push(...data);
+    showToast('⏳ Descargando... ' + allRows.length + ' filas', '#166534');
     if (data.length < PAGE) break;
     from += PAGE;
   }
+  hideToast();
+  if (!allRows.length) { alert('No hay datos para este período.'); return; }
   const t = tipo || 'todo';
   const y = ano ? String(ano) : '';
   const m = (mes && mes > 0) ? (MESES[mes] || String(mes)) : '';
@@ -792,6 +819,8 @@ async function downloadDetalle(params) {
   const c = cod || '';
   const parts = ['CAMPO', t, c || g || 'todos', y, m].filter(Boolean);
   exportCSV(allRows, parts.join('_') + '.csv');
+  showToast('✅ ' + allRows.length + ' filas descargadas', '#059669');
+  setTimeout(hideToast, 3000);
 }
 
 function dlClick(tipo, ano, mes, grupo, cod) {
