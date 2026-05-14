@@ -6,6 +6,7 @@
 <title>Dashboard Rentabilidad PACKING - Chamonate</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
@@ -15,7 +16,7 @@
   .pill { transition: all 0.2s; cursor: pointer; }
   .pill.active { background: #c2410c; color: #fff; box-shadow: 0 2px 8px rgba(194,65,12,0.3); }
   .card { background: #fff; border-radius: 1rem; border: 1px solid #f3f4f6; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06); }
-  .row-hover:hover { background: rgba(249,115,22,0.06); cursor: pointer; }
+  .row-hover:hover { background: rgba(194,65,12,0.04); cursor: pointer; }
   canvas { max-width: 100%; }
   [data-tab] { display: none; }
   [data-tab].visible { display: block; }
@@ -23,30 +24,42 @@
   .breadcrumb-item:hover { color: #c2410c; }
   .level-card { cursor: pointer; transition: all 0.2s; }
   .level-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(194,65,12,0.15); }
+  #loading-overlay { position:fixed;inset:0;background:rgba(248,249,252,0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px; }
+  .spinner { width:40px;height:40px;border:4px solid #fed7aa;border-top-color:#c2410c;border-radius:50%;animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #mov-panel { display:none; }
+  #mov-panel.visible { display:block; }
+  .dl-cell { cursor: pointer; }
+  .dl-cell:hover { background: rgba(194,65,12,0.07) !important; }
+  .dl-icon { opacity: 0.35; font-size: 0.68em; margin-left: 2px; }
 </style>
 </head>
 <body style="background:#F8F9FC">
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p class="text-sm font-semibold text-gray-500">Cargando datos desde Supabase...</p>
+</div>
 
 <a href="/" style="position:fixed;top:16px;left:16px;z-index:9999;display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(255,255,255,0.95);color:#c2410c;border:1px solid rgba(194,65,12,0.2);border-radius:9999px;font-family:'Inter',system-ui,sans-serif;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,0.15);backdrop-filter:blur(8px);transition:all 0.2s" onmouseover="this.style.background='#fff';this.style.transform='translateX(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.95)';this.style.transform='translateX(0)'">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
   Volver a Indicadores
 </a>
 
-
-<div style="background:linear-gradient(135deg,#431407 0%,#9a3412 50%,#c2410c 100%)">
+<div style="background:linear-gradient(135deg,#431407 0%,#c2410c 50%,#9a3412 100%)">
   <div class="max-w-7xl mx-auto px-6 pt-5 pb-3">
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-white text-lg font-extrabold tracking-tight">Proyecto Chamonate · Rentabilidad PACKING</h1>
-        <p class="text-orange-200/70 text-xs font-medium">Universo: 38 CC (Excel CC_Packing + 2 extras MQP) · 2024–2026 · Fuente: Libro Mayor</p>
+        <p class="text-orange-300/60 text-xs font-medium">Fuente: Libro Mayor Supabase · Cuentas 4xxx (ingresos) y 3xxx (costos operativos)</p>
       </div>
-      <span class="bg-orange-500/20 text-orange-200 text-xs font-bold px-3 py-1.5 rounded-full border border-orange-400/30">📦 Packing</span>
+      <span class="bg-orange-500/20 text-orange-300 text-xs font-bold px-3 py-1.5 rounded-full border border-orange-400/30">📦 Packing</span>
     </div>
     <div class="flex gap-1 mt-4" id="tabs">
-      <button data-tabid="general" class="tab-btn active flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📊 General</button>
-      <button data-tabid="mensual" class="tab-btn text-orange-100/60 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📅 Mensual</button>
-      <button data-tabid="categoria" class="tab-btn text-orange-100/60 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📦 Por Categoría</button>
-      <button data-tabid="cc" class="tab-btn text-orange-100/60 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📋 Por CC</button>
+      <button data-tabid="general"  class="tab-btn active flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📊 General</button>
+      <button data-tabid="mensual"  class="tab-btn text-orange-200/50 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">📅 Mensual</button>
+      <button data-tabid="linea"    class="tab-btn text-orange-200/50 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">🍒 Por Línea</button>
+      <button data-tabid="centro"   class="tab-btn text-orange-200/50 flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-xs font-semibold">🔧 Por Centro</button>
     </div>
   </div>
 </div>
@@ -66,9 +79,7 @@
           <select id="month-select-global" class="bg-white border border-gray-200 rounded-full px-3 py-1 text-xs font-semibold text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-200"></select>
         </div>
       </div>
-      <div id="breadcrumb" class="text-xs text-gray-400 font-medium flex items-center gap-2">
-        <span>Inicio</span>
-      </div>
+      <div id="breadcrumb" class="text-xs text-gray-400 font-medium flex items-center gap-2"><span>Inicio</span></div>
     </div>
   </div>
 
@@ -82,7 +93,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="card lg:col-span-2"><div class="p-5">
         <h3 class="text-sm font-bold text-gray-700 mb-1">Ingresos vs Costos · Resultado</h3>
-        <p class="text-xs text-gray-400 mb-4">Comparativa por año (2026 = enero-febrero)</p>
+        <p class="text-xs text-gray-400 mb-4">Comparativa por año · Libro Mayor</p>
         <canvas id="chart-anual" height="160"></canvas>
       </div></div>
       <div class="card"><div class="p-5">
@@ -92,9 +103,9 @@
       </div></div>
     </div>
     <div class="card"><div class="p-5">
-      <h3 class="text-sm font-bold text-gray-700 mb-1">Resultado por Categoría</h3><p class="text-xs text-gray-400 mb-4" id="ubic-ranking-subtitulo">Año seleccionado</p>
-      <p class="text-xs text-gray-400 mb-4">Click en una barra para ver el detalle</p>
-      <canvas id="chart-categorias" height="220"></canvas>
+      <h3 class="text-sm font-bold text-gray-700 mb-1">Resultado por Línea</h3>
+      <p class="text-xs text-gray-400 mb-4" id="ubic-ranking-subtitulo">Año seleccionado · Click en barra para ver detalle</p>
+      <canvas id="chart-lineas" height="220"></canvas>
     </div></div>
   </div>
 
@@ -118,52 +129,65 @@
     </div>
   </div>
 
-  <!-- POR CATEGORÍA -->
-  <div data-tab="categoria" class="space-y-6">
-    <div class="flex flex-wrap items-center justify-end gap-4">
-      <select id="categoria-select" class="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-200 shadow-sm" style="min-width:260px"></select>
-    </div>
-    <div id="categoria-summary"></div>
-    <div id="categoria-detail"></div>
+  <!-- POR LÍNEA -->
+  <div data-tab="linea" class="space-y-6">
+    <div id="linea-summary"></div>
+    <div id="linea-detail"></div>
   </div>
 
-  <!-- POR CC INDIVIDUAL -->
-  <div data-tab="cc" class="space-y-6">
+  <!-- POR CENTRO -->
+  <div data-tab="centro" class="space-y-6">
     <div class="flex flex-wrap items-center justify-end gap-4">
-      <select id="cc-select" class="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-200 shadow-sm" style="min-width:380px"></select>
+      <select id="centro-select" class="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-200 shadow-sm" style="min-width:380px"></select>
     </div>
-    <div id="cc-content"></div>
+    <div id="centro-content"></div>
+    <div id="mov-panel" class="card">
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-bold text-gray-700" id="mov-title">Movimientos Libro Mayor</h3>
+            <p class="text-xs text-gray-400 mt-0.5" id="mov-subtitle"></p>
+          </div>
+          <button id="mov-close" class="text-gray-400 hover:text-gray-600 text-lg font-bold px-2">✕</button>
+        </div>
+        <div id="mov-loading" class="text-center py-8 text-sm text-gray-400">Cargando movimientos...</div>
+        <div class="overflow-x-auto" id="mov-table-wrap" style="display:none"></div>
+      </div>
+    </div>
   </div>
 
   <div class="text-center py-6 border-t border-gray-100 mt-4">
-    <p class="text-xs text-gray-400">Dashboard Rentabilidad Packing · Mayo 2026 · Proyecto Chamonate</p>
+    <p class="text-xs text-gray-400">Dashboard Rentabilidad Packing · Proyecto Chamonate · Fuente: Libro Mayor Supabase</p>
   </div>
 </div>
 
 <script>
-const DATA = {"resumen_anual": [{"ingreso": 11588347914, "costo": 5814087520, "resultado": 5774260394, "margen": 49.8, "ano": 2024}, {"ingreso": 8428818119, "costo": 4764158454, "resultado": 3664659665, "margen": 43.5, "ano": 2025}, {"ingreso": 1705628889, "costo": 987127297, "resultado": 718501592, "margen": 42.1, "ano": 2026}], "resumen_mensual": [{"ingreso": 2426881071, "costo": 1213288475, "resultado": 1213592596, "margen": 50.0, "ano": 2024, "mes": 1}, {"ingreso": 115618286, "costo": 216545546, "resultado": -100927260, "margen": -87.3, "ano": 2024, "mes": 2}, {"ingreso": 215588197, "costo": 213845321, "resultado": 1742876, "margen": 0.8, "ano": 2024, "mes": 3}, {"ingreso": 48640728, "costo": 82893296, "resultado": -34252568, "margen": -70.4, "ano": 2024, "mes": 4}, {"ingreso": 100047410, "costo": 138820239, "resultado": -38772829, "margen": -38.8, "ano": 2024, "mes": 5}, {"ingreso": 115567365, "costo": 141941133, "resultado": -26373768, "margen": -22.8, "ano": 2024, "mes": 6}, {"ingreso": 194081138, "costo": 149656973, "resultado": 44424165, "margen": 22.9, "ano": 2024, "mes": 7}, {"ingreso": 163493398, "costo": 173999753, "resultado": -10506355, "margen": -6.4, "ano": 2024, "mes": 8}, {"ingreso": 52637452, "costo": 148116271, "resultado": -95478819, "margen": -181.4, "ano": 2024, "mes": 9}, {"ingreso": 730817, "costo": 227736903, "resultado": -227006086, "margen": -31062.0, "ano": 2024, "mes": 10}, {"ingreso": 1323493877, "costo": 614320173, "resultado": 709173704, "margen": 53.6, "ano": 2024, "mes": 11}, {"ingreso": 6831568175, "costo": 2492923437, "resultado": 4338644738, "margen": 63.5, "ano": 2024, "mes": 12}, {"ingreso": 464775773, "costo": 264890339, "resultado": 199885434, "margen": 43.0, "ano": 2025, "mes": 1}, {"ingreso": 914137064, "costo": 572412189, "resultado": 341724875, "margen": 37.4, "ano": 2025, "mes": 2}, {"ingreso": 239478140, "costo": 256482575, "resultado": -17004435, "margen": -7.1, "ano": 2025, "mes": 3}, {"ingreso": 37290210, "costo": 203286553, "resultado": -165996343, "margen": -445.1, "ano": 2025, "mes": 4}, {"ingreso": 4153595, "costo": 353341129, "resultado": -349187534, "margen": -8406.9, "ano": 2025, "mes": 5}, {"ingreso": 83996493, "costo": 85728712, "resultado": -1732219, "margen": -2.1, "ano": 2025, "mes": 6}, {"ingreso": 106843017, "costo": 119911289, "resultado": -13068272, "margen": -12.2, "ano": 2025, "mes": 7}, {"ingreso": 12262716, "costo": 89970037, "resultado": -77707321, "margen": -633.7, "ano": 2025, "mes": 8}, {"ingreso": 1767191, "costo": 166816055, "resultado": -165048864, "margen": -9339.6, "ano": 2025, "mes": 9}, {"ingreso": 16188000, "costo": 295892194, "resultado": -279704194, "margen": -1727.8, "ano": 2025, "mes": 10}, {"ingreso": 1136881251, "costo": 680937600, "resultado": 455943651, "margen": 40.1, "ano": 2025, "mes": 11}, {"ingreso": 5411044669, "costo": 1674489782, "resultado": 3736554887, "margen": 69.1, "ano": 2025, "mes": 12}, {"ingreso": 1271362427, "costo": 592988172, "resultado": 678374255, "margen": 53.4, "ano": 2026, "mes": 1}, {"ingreso": 434266462, "costo": 394139125, "resultado": 40127337, "margen": 9.2, "ano": 2026, "mes": 2}], "resumen_categoria": [{"ingreso": 10603528516, "costo": 4557707363, "resultado": 6045821153, "margen": 57.0, "ano": 2024, "categoria": "Cerezas"}, {"ingreso": 298937072, "costo": 348207494, "resultado": -49270422, "margen": -16.5, "ano": 2024, "categoria": "Manzanas"}, {"ingreso": 614175240, "costo": 503960329, "resultado": 110214911, "margen": 17.9, "ano": 2024, "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "categoria": "Carozos · Uva · Frigorífico"}, {"ingreso": 71707086, "costo": 295074808, "resultado": -223367722, "margen": -311.5, "ano": 2024, "categoria": "General Packing"}, {"ingreso": 0, "costo": 90702033, "resultado": -90702033, "margen": -100, "ano": 2024, "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 18435493, "resultado": -18435493, "margen": -100, "ano": 2024, "categoria": "Inversiones / Construcción"}, {"ingreso": 7131119264, "costo": 3295218491, "resultado": 3835900773, "margen": 53.8, "ano": 2025, "categoria": "Cerezas"}, {"ingreso": 1273422047, "costo": 1162001230, "resultado": 111420817, "margen": 8.7, "ano": 2025, "categoria": "Manzanas"}, {"ingreso": 0, "costo": 954378, "resultado": -954378, "margen": -100, "ano": 2025, "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "categoria": "Carozos · Uva · Frigorífico"}, {"ingreso": 24276808, "costo": 225530996, "resultado": -201254188, "margen": -829.0, "ano": 2025, "categoria": "General Packing"}, {"ingreso": 0, "costo": 80453359, "resultado": -80453359, "margen": -100, "ano": 2025, "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "categoria": "Inversiones / Construcción"}, {"ingreso": 1475362933, "costo": 640151697, "resultado": 835211236, "margen": 56.6, "ano": 2026, "categoria": "Cerezas"}, {"ingreso": 230265956, "costo": 313980412, "resultado": -83714456, "margen": -36.4, "ano": 2026, "categoria": "Manzanas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "categoria": "Carozos · Uva · Frigorífico"}, {"ingreso": 0, "costo": 30839895, "resultado": -30839895, "margen": -100, "ano": 2026, "categoria": "General Packing"}, {"ingreso": 0, "costo": 2155293, "resultado": -2155293, "margen": -100, "ano": 2026, "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "categoria": "Inversiones / Construcción"}], "resumen_cc": [{"ingreso": 0, "costo": 343745, "resultado": -343745, "margen": -100, "ano": 2024, "cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing"}, {"ingreso": 1920000, "costo": 139506320, "resultado": -137586320, "margen": -7166.0, "ano": 2024, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 69787086, "costo": 153120413, "resultado": -83333327, "margen": -119.4, "ano": 2024, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "850T", "nombre": "CHAM - PRODUCCION PACKING TRATOS", "categoria": "General Packing"}, {"ingreso": 0, "costo": 1384330, "resultado": -1384330, "margen": -100, "ano": 2024, "cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing"}, {"ingreso": 0, "costo": 720000, "resultado": -720000, "margen": -100, "ano": 2024, "cod": "8", "nombre": "PRESTACIÓN DE SERVICIOS 2", "categoria": "General Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "9920", "nombre": "OBSOLETO - PACKING", "categoria": "General Packing"}, {"ingreso": 298206255, "costo": 343621346, "resultado": -45415091, "margen": -15.2, "ano": 2024, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 1106508, "resultado": -1106508, "margen": -100, "ano": 2024, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 42815, "resultado": -42815, "margen": -100, "ano": 2024, "cod": "855-03", "nombre": "CHAM - CALIDAD MANZANAS", "categoria": "Manzanas"}, {"ingreso": 730817, "costo": 3436825, "resultado": -2706008, "margen": -370.3, "ano": 2024, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "855T", "nombre": "CHAM - PACKING MANZANAS TRATOS", "categoria": "Manzanas"}, {"ingreso": 10603528516, "costo": 4530994492, "resultado": 6072534024, "margen": 57.3, "ano": 2024, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 327483, "resultado": -327483, "margen": -100, "ano": 2024, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 14468701, "resultado": -14468701, "margen": -100, "ano": 2024, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 1989543, "resultado": -1989543, "margen": -100, "ano": 2024, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 9927144, "resultado": -9927144, "margen": -100, "ano": 2024, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "860T", "nombre": "CHAM - PACKING CEREZAS TRATOS", "categoria": "Cerezas"}, {"ingreso": 126658939, "costo": 29250415, "resultado": 97408524, "margen": 76.9, "ano": 2024, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "870-1", "nombre": "CHAM - FRÍO MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 21312930, "resultado": -21312930, "margen": -100, "ano": 2024, "cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 100921, "resultado": -100921, "margen": -100, "ano": 2024, "cod": "870-3", "nombre": "CHAM - CALIDAD MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 4435717, "resultado": -4435717, "margen": -100, "ano": 2024, "cod": "870-4", "nombre": "CHAM - BODEGA MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "870T", "nombre": "CHAM - PACKING MANDARINAS TRATOS", "categoria": "Cítricos"}, {"ingreso": 253304194, "costo": 17093660, "resultado": 236210534, "margen": 93.3, "ano": 2024, "cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos"}, {"ingreso": 92473374, "costo": 378068600, "resultado": -285595226, "margen": -308.8, "ano": 2024, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "872T", "nombre": "CHAM - PACKING CÍTRICOS TRATOS", "categoria": "Cítricos"}, {"ingreso": 141738733, "costo": 53698086, "resultado": 88040647, "margen": 62.1, "ano": 2024, "cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "873T", "nombre": "CHAM - PACKING CLEMENTINAS TRATOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "880", "nombre": "CHAM - FRÍO UVA", "categoria": "Carozos · Uva · Frigorífico"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "880T", "nombre": "CHAM - PACKING CAROZOS", "categoria": "Carozos · Uva · Frigorífico"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "802", "nombre": "CONSTRUCCION GALPON PATIO RECEPCION", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "890", "nombre": "INVERSION PACKING", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "cod": "895", "nombre": "CHAM - AMPLIACIÓN PACKING CEREZAS (2019)", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 18435493, "resultado": -18435493, "margen": -100, "ano": 2024, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 81635205, "resultado": -81635205, "margen": -100, "ano": 2024, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 9066828, "resultado": -9066828, "margen": -100, "ano": 2024, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 211190, "resultado": -211190, "margen": -100, "ano": 2025, "cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing"}, {"ingreso": 24276808, "costo": 59248783, "resultado": -34971975, "margen": -144.1, "ano": 2025, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 166000916, "resultado": -166000916, "margen": -100, "ano": 2025, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "850T", "nombre": "CHAM - PRODUCCION PACKING TRATOS", "categoria": "General Packing"}, {"ingreso": 0, "costo": 66042, "resultado": -66042, "margen": -100, "ano": 2025, "cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing"}, {"ingreso": 0, "costo": 4065, "resultado": -4065, "margen": -100, "ano": 2025, "cod": "8", "nombre": "PRESTACIÓN DE SERVICIOS 2", "categoria": "General Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "9920", "nombre": "OBSOLETO - PACKING", "categoria": "General Packing"}, {"ingreso": 1111395810, "costo": 1104464783, "resultado": 6931027, "margen": 0.6, "ano": 2025, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 162026237, "costo": 22607857, "resultado": 139418380, "margen": 86.0, "ano": 2025, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 19546922, "resultado": -19546922, "margen": -100, "ano": 2025, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 14781, "resultado": -14781, "margen": -100, "ano": 2025, "cod": "855-03", "nombre": "CHAM - CALIDAD MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 15366887, "resultado": -15366887, "margen": -100, "ano": 2025, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "855T", "nombre": "CHAM - PACKING MANZANAS TRATOS", "categoria": "Manzanas"}, {"ingreso": 6080325704, "costo": 3020515836, "resultado": 3059809868, "margen": 50.3, "ano": 2025, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 1050793560, "costo": 200994419, "resultado": 849799141, "margen": 80.9, "ano": 2025, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 21248715, "resultado": -21248715, "margen": -100, "ano": 2025, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 3027694, "resultado": -3027694, "margen": -100, "ano": 2025, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 49431827, "resultado": -49431827, "margen": -100, "ano": 2025, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "860T", "nombre": "CHAM - PACKING CEREZAS TRATOS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 269625, "resultado": -269625, "margen": -100, "ano": 2025, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "870-1", "nombre": "CHAM - FRÍO MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "870-3", "nombre": "CHAM - CALIDAD MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "870-4", "nombre": "CHAM - BODEGA MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "870T", "nombre": "CHAM - PACKING MANDARINAS TRATOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 269, "resultado": -269, "margen": -100, "ano": 2025, "cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 575816, "resultado": -575816, "margen": -100, "ano": 2025, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "872T", "nombre": "CHAM - PACKING CÍTRICOS TRATOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 108668, "resultado": -108668, "margen": -100, "ano": 2025, "cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "873T", "nombre": "CHAM - PACKING CLEMENTINAS TRATOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "880", "nombre": "CHAM - FRÍO UVA", "categoria": "Carozos · Uva · Frigorífico"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "880T", "nombre": "CHAM - PACKING CAROZOS", "categoria": "Carozos · Uva · Frigorífico"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "802", "nombre": "CONSTRUCCION GALPON PATIO RECEPCION", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "890", "nombre": "INVERSION PACKING", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "895", "nombre": "CHAM - AMPLIACIÓN PACKING CEREZAS (2019)", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 48395877, "resultado": -48395877, "margen": -100, "ano": 2025, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 32057482, "resultado": -32057482, "margen": -100, "ano": 2025, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing"}, {"ingreso": 0, "costo": 8730295, "resultado": -8730295, "margen": -100, "ano": 2026, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 22109600, "resultado": -22109600, "margen": -100, "ano": 2026, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "850T", "nombre": "CHAM - PRODUCCION PACKING TRATOS", "categoria": "General Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "8", "nombre": "PRESTACIÓN DE SERVICIOS 2", "categoria": "General Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "9920", "nombre": "OBSOLETO - PACKING", "categoria": "General Packing"}, {"ingreso": 207966180, "costo": 259944556, "resultado": -51978376, "margen": -25.0, "ano": 2026, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 11342040, "costo": 36340938, "resultado": -24998898, "margen": -220.4, "ano": 2026, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 15894656, "resultado": -15894656, "margen": -100, "ano": 2026, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 24153, "resultado": -24153, "margen": -100, "ano": 2026, "cod": "855-03", "nombre": "CHAM - CALIDAD MANZANAS", "categoria": "Manzanas"}, {"ingreso": 10957736, "costo": 1776109, "resultado": 9181627, "margen": 83.8, "ano": 2026, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "855T", "nombre": "CHAM - PACKING MANZANAS TRATOS", "categoria": "Manzanas"}, {"ingreso": 1214870961, "costo": 555420637, "resultado": 659450324, "margen": 54.3, "ano": 2026, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 260491972, "costo": 63637892, "resultado": 196854080, "margen": 75.6, "ano": 2026, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 9984450, "resultado": -9984450, "margen": -100, "ano": 2026, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 11108718, "resultado": -11108718, "margen": -100, "ano": 2026, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "860T", "nombre": "CHAM - PACKING CEREZAS TRATOS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "870-1", "nombre": "CHAM - FRÍO MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "870-3", "nombre": "CHAM - CALIDAD MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "870-4", "nombre": "CHAM - BODEGA MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "870T", "nombre": "CHAM - PACKING MANDARINAS TRATOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "872T", "nombre": "CHAM - PACKING CÍTRICOS TRATOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "873T", "nombre": "CHAM - PACKING CLEMENTINAS TRATOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "880", "nombre": "CHAM - FRÍO UVA", "categoria": "Carozos · Uva · Frigorífico"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "880T", "nombre": "CHAM - PACKING CAROZOS", "categoria": "Carozos · Uva · Frigorífico"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "802", "nombre": "CONSTRUCCION GALPON PATIO RECEPCION", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "890", "nombre": "INVERSION PACKING", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "895", "nombre": "CHAM - AMPLIACIÓN PACKING CEREZAS (2019)", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2026, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 1797790, "resultado": -1797790, "margen": -100, "ano": 2026, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 357503, "resultado": -357503, "margen": -100, "ano": 2026, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}], "resumen_cc_mes": [{"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 1, "cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing"}, {"ingreso": 0, "costo": 254245, "resultado": -254245, "margen": -100, "ano": 2024, "mes": 8, "cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing"}, {"ingreso": 0, "costo": 89500, "resultado": -89500, "margen": -100, "ano": 2024, "mes": 10, "cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "mes": 1, "cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing"}, {"ingreso": 0, "costo": 61190, "resultado": -61190, "margen": -100, "ano": 2025, "mes": 3, "cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing"}, {"ingreso": 0, "costo": 150000, "resultado": -150000, "margen": -100, "ano": 2025, "mes": 11, "cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing"}, {"ingreso": 0, "costo": 4726773, "resultado": -4726773, "margen": -100, "ano": 2024, "mes": 1, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 16768660, "resultado": -16768660, "margen": -100, "ano": 2024, "mes": 2, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 9700778, "resultado": -9700778, "margen": -100, "ano": 2024, "mes": 3, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 2746136, "resultado": -2746136, "margen": -100, "ano": 2024, "mes": 4, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 1920000, "costo": 4274607, "resultado": -2354607, "margen": -122.6, "ano": 2024, "mes": 5, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 2727870, "resultado": -2727870, "margen": -100, "ano": 2024, "mes": 6, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11439469, "resultado": -11439469, "margen": -100, "ano": 2024, "mes": 7, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 18066706, "resultado": -18066706, "margen": -100, "ano": 2024, "mes": 8, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 4382193, "resultado": -4382193, "margen": -100, "ano": 2024, "mes": 9, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 32858362, "resultado": -32858362, "margen": -100, "ano": 2024, "mes": 10, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 20766847, "resultado": -20766847, "margen": -100, "ano": 2024, "mes": 11, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11047919, "resultado": -11047919, "margen": -100, "ano": 2024, "mes": 12, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 1072129, "resultado": -1072129, "margen": -100, "ano": 2025, "mes": 1, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 2498101, "resultado": -2498101, "margen": -100, "ano": 2025, "mes": 2, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 2354384, "resultado": -2354384, "margen": -100, "ano": 2025, "mes": 3, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 14172102, "resultado": -14172102, "margen": -100, "ano": 2025, "mes": 4, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 3250360, "resultado": -3250360, "margen": -100, "ano": 2025, "mes": 5, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 2953146, "costo": 4592046, "resultado": -1638900, "margen": -55.5, "ano": 2025, "mes": 6, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 21323662, "costo": 4422891, "resultado": 16900771, "margen": 79.3, "ano": 2025, "mes": 7, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 3311251, "resultado": -3311251, "margen": -100, "ano": 2025, "mes": 8, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 4629772, "resultado": -4629772, "margen": -100, "ano": 2025, "mes": 9, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 2381368, "resultado": -2381368, "margen": -100, "ano": 2025, "mes": 10, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11423521, "resultado": -11423521, "margen": -100, "ano": 2025, "mes": 11, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 5140858, "resultado": -5140858, "margen": -100, "ano": 2025, "mes": 12, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 3934727, "resultado": -3934727, "margen": -100, "ano": 2026, "mes": 1, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 4795568, "resultado": -4795568, "margen": -100, "ano": 2026, "mes": 2, "cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing"}, {"ingreso": 0, "costo": 12818719, "resultado": -12818719, "margen": -100, "ano": 2024, "mes": 1, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 71961070, "costo": 9467116, "resultado": 62493954, "margen": 86.8, "ano": 2024, "mes": 2, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 10914094, "resultado": -10914094, "margen": -100, "ano": 2024, "mes": 3, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": -2173984, "costo": 10686959, "resultado": -12860943, "margen": -100, "ano": 2024, "mes": 4, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 9722047, "resultado": -9722047, "margen": -100, "ano": 2024, "mes": 5, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11026289, "resultado": -11026289, "margen": -100, "ano": 2024, "mes": 6, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11447876, "resultado": -11447876, "margen": -100, "ano": 2024, "mes": 7, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 12130744, "resultado": -12130744, "margen": -100, "ano": 2024, "mes": 8, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 10974873, "resultado": -10974873, "margen": -100, "ano": 2024, "mes": 9, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 30242291, "resultado": -30242291, "margen": -100, "ano": 2024, "mes": 10, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11519090, "resultado": -11519090, "margen": -100, "ano": 2024, "mes": 11, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 12170315, "resultado": -12170315, "margen": -100, "ano": 2024, "mes": 12, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 12093052, "resultado": -12093052, "margen": -100, "ano": 2025, "mes": 1, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 10997382, "resultado": -10997382, "margen": -100, "ano": 2025, "mes": 2, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 12230284, "resultado": -12230284, "margen": -100, "ano": 2025, "mes": 3, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11369842, "resultado": -11369842, "margen": -100, "ano": 2025, "mes": 4, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 13099685, "resultado": -13099685, "margen": -100, "ano": 2025, "mes": 5, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 12019584, "resultado": -12019584, "margen": -100, "ano": 2025, "mes": 6, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11845822, "resultado": -11845822, "margen": -100, "ano": 2025, "mes": 7, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 14808795, "resultado": -14808795, "margen": -100, "ano": 2025, "mes": 8, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 12318944, "resultado": -12318944, "margen": -100, "ano": 2025, "mes": 9, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 33921049, "resultado": -33921049, "margen": -100, "ano": 2025, "mes": 10, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11913231, "resultado": -11913231, "margen": -100, "ano": 2025, "mes": 11, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 9383246, "resultado": -9383246, "margen": -100, "ano": 2025, "mes": 12, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 10902429, "resultado": -10902429, "margen": -100, "ano": 2026, "mes": 1, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 11207171, "resultado": -11207171, "margen": -100, "ano": 2026, "mes": 2, "cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing"}, {"ingreso": 0, "costo": 367330, "resultado": -367330, "margen": -100, "ano": 2024, "mes": 1, "cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing"}, {"ingreso": 0, "costo": 170000, "resultado": -170000, "margen": -100, "ano": 2024, "mes": 3, "cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing"}, {"ingreso": 0, "costo": 620000, "resultado": -620000, "margen": -100, "ano": 2024, "mes": 5, "cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing"}, {"ingreso": 0, "costo": 78000, "resultado": -78000, "margen": -100, "ano": 2024, "mes": 9, "cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing"}, {"ingreso": 0, "costo": 149000, "resultado": -149000, "margen": -100, "ano": 2024, "mes": 12, "cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing"}, {"ingreso": 0, "costo": 66042, "resultado": -66042, "margen": -100, "ano": 2025, "mes": 5, "cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing"}, {"ingreso": 0, "costo": 720000, "resultado": -720000, "margen": -100, "ano": 2024, "mes": 12, "cod": "8", "nombre": "PRESTACIÓN DE SERVICIOS 2", "categoria": "General Packing"}, {"ingreso": 0, "costo": 4065, "resultado": -4065, "margen": -100, "ano": 2025, "mes": 2, "cod": "8", "nombre": "PRESTACIÓN DE SERVICIOS 2", "categoria": "General Packing"}, {"ingreso": 0, "costo": 6909739, "resultado": -6909739, "margen": -100, "ano": 2024, "mes": 1, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 43021657, "costo": 135599794, "resultado": -92578137, "margen": -215.2, "ano": 2024, "mes": 2, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 194638363, "costo": 84821916, "resultado": 109816447, "margen": 56.4, "ano": 2024, "mes": 3, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 50814712, "costo": 53455514, "resultado": -2640802, "margen": -5.2, "ano": 2024, "mes": 4, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 1835055, "costo": 258586, "resultado": 1576469, "margen": 85.9, "ano": 2024, "mes": 5, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 3697500, "costo": 30051709, "resultado": -26354209, "margen": -712.8, "ano": 2024, "mes": 6, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 4198968, "costo": 31062, "resultado": 4167906, "margen": 99.3, "ano": 2024, "mes": 7, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 20238434, "resultado": -20238434, "margen": -100, "ano": 2024, "mes": 8, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 215655, "resultado": -215655, "margen": -100, "ano": 2024, "mes": 9, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 12034050, "resultado": -12034050, "margen": -100, "ano": 2024, "mes": 10, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 4887, "resultado": -4887, "margen": -100, "ano": 2024, "mes": 12, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 62083573, "resultado": -62083573, "margen": -100, "ano": 2025, "mes": 1, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 256701959, "costo": 291592738, "resultado": -34890779, "margen": -13.6, "ano": 2025, "mes": 2, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 195489565, "costo": 147369274, "resultado": 48120291, "margen": 24.6, "ano": 2025, "mes": 3, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 37290210, "costo": 126802654, "resultado": -89512444, "margen": -240.0, "ano": 2025, "mes": 4, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 4153595, "costo": 306632202, "resultado": -302478607, "margen": -7282.3, "ano": 2025, "mes": 5, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 60418217, "costo": 46889920, "resultado": 13528297, "margen": 22.4, "ano": 2025, "mes": 6, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 48889043, "costo": 48569420, "resultado": 319623, "margen": 0.7, "ano": 2025, "mes": 7, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 3669830, "costo": 30235948, "resultado": -26566118, "margen": -723.9, "ano": 2025, "mes": 8, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 1767191, "costo": 28294140, "resultado": -26526949, "margen": -1501.1, "ano": 2025, "mes": 9, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 16188000, "costo": 9433286, "resultado": 6754714, "margen": 41.7, "ano": 2025, "mes": 10, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 356628, "costo": 1280402, "resultado": -923774, "margen": -259.0, "ano": 2025, "mes": 11, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 486471572, "costo": 5281226, "resultado": 481190346, "margen": 98.9, "ano": 2025, "mes": 12, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 278740, "costo": 89820371, "resultado": -89541631, "margen": -32123.7, "ano": 2026, "mes": 1, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 207687440, "costo": 170124185, "resultado": 37563255, "margen": 18.1, "ano": 2026, "mes": 2, "cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 5021284, "resultado": -5021284, "margen": -100, "ano": 2025, "mes": 4, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 4603028, "resultado": -4603028, "margen": -100, "ano": 2025, "mes": 5, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 18606500, "costo": 4209382, "resultado": 14397118, "margen": 77.4, "ano": 2025, "mes": 6, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 36630312, "costo": 5511322, "resultado": 31118990, "margen": 85.0, "ano": 2025, "mes": 7, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 8592886, "costo": 2002306, "resultado": 6590580, "margen": 76.7, "ano": 2025, "mes": 8, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 1260535, "resultado": -1260535, "margen": -100, "ano": 2025, "mes": 9, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 98196539, "costo": 0, "resultado": 98196539, "margen": 100.0, "ano": 2025, "mes": 12, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 1465182, "resultado": -1465182, "margen": -100, "ano": 2026, "mes": 1, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 11342040, "costo": 34875756, "resultado": -23533716, "margen": -207.5, "ano": 2026, "mes": 2, "cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 1106508, "resultado": -1106508, "margen": -100, "ano": 2024, "mes": 4, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 14286, "resultado": -14286, "margen": -100, "ano": 2025, "mes": 1, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 474370, "resultado": -474370, "margen": -100, "ano": 2025, "mes": 2, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 6214088, "resultado": -6214088, "margen": -100, "ano": 2025, "mes": 3, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 4513183, "resultado": -4513183, "margen": -100, "ano": 2025, "mes": 4, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 3705717, "resultado": -3705717, "margen": -100, "ano": 2025, "mes": 5, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 5910611, "resultado": -5910611, "margen": -100, "ano": 2025, "mes": 6, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": -1285333, "resultado": 1285333, "margen": -100, "ano": 2025, "mes": 7, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 15894656, "resultado": -15894656, "margen": -100, "ano": 2026, "mes": 2, "cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 42815, "resultado": -42815, "margen": -100, "ano": 2024, "mes": 4, "cod": "855-03", "nombre": "CHAM - CALIDAD MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 9235, "resultado": -9235, "margen": -100, "ano": 2025, "mes": 3, "cod": "855-03", "nombre": "CHAM - CALIDAD MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 5546, "resultado": -5546, "margen": -100, "ano": 2025, "mes": 6, "cod": "855-03", "nombre": "CHAM - CALIDAD MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 24153, "resultado": -24153, "margen": -100, "ano": 2026, "mes": 1, "cod": "855-03", "nombre": "CHAM - CALIDAD MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 1068839, "resultado": -1068839, "margen": -100, "ano": 2024, "mes": 2, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 1075712, "resultado": -1075712, "margen": -100, "ano": 2024, "mes": 3, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 1218984, "resultado": -1218984, "margen": -100, "ano": 2024, "mes": 4, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 73290, "resultado": -73290, "margen": -100, "ano": 2024, "mes": 6, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 730817, "costo": 0, "resultado": 730817, "margen": 100.0, "ano": 2024, "mes": 10, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 28404, "resultado": -28404, "margen": -100, "ano": 2025, "mes": 1, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 528668, "resultado": -528668, "margen": -100, "ano": 2025, "mes": 2, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 6017291, "resultado": -6017291, "margen": -100, "ano": 2025, "mes": 3, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 4594125, "resultado": -4594125, "margen": -100, "ano": 2025, "mes": 4, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 4015517, "resultado": -4015517, "margen": -100, "ano": 2025, "mes": 5, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 76735, "resultado": -76735, "margen": -100, "ano": 2025, "mes": 6, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 106147, "resultado": -106147, "margen": -100, "ano": 2025, "mes": 7, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 0, "costo": 56050, "resultado": -56050, "margen": -100, "ano": 2026, "mes": 1, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 10957736, "costo": 1720059, "resultado": 9237677, "margen": 84.3, "ano": 2026, "mes": 2, "cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas"}, {"ingreso": 2426881071, "costo": 1172078438, "resultado": 1254802633, "margen": 51.7, "ano": 2024, "mes": 1, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 635559, "costo": 52555733, "resultado": -51920174, "margen": -8169.2, "ano": 2024, "mes": 2, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 20949834, "costo": 87569993, "resultado": -66620159, "margen": -318.0, "ano": 2024, "mes": 3, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 3615333, "resultado": -3615333, "margen": -100, "ano": 2024, "mes": 4, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 49400, "resultado": -49400, "margen": -100, "ano": 2024, "mes": 5, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 8106241, "resultado": -8106241, "margen": -100, "ano": 2024, "mes": 6, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 2306022, "resultado": -2306022, "margen": -100, "ano": 2024, "mes": 7, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 4217426, "resultado": -4217426, "margen": -100, "ano": 2024, "mes": 8, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 31712965, "resultado": -31712965, "margen": -100, "ano": 2024, "mes": 9, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 136399194, "resultado": -136399194, "margen": -100, "ano": 2024, "mes": 10, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 1323493877, "costo": 572064263, "resultado": 751429614, "margen": 56.8, "ano": 2024, "mes": 11, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 6831568175, "costo": 2460319484, "resultado": 4371248691, "margen": 64.0, "ano": 2024, "mes": 12, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 464775773, "costo": 169782819, "resultado": 294992954, "margen": 63.5, "ano": 2025, "mes": 1, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 657435105, "costo": 252111860, "resultado": 405323245, "margen": 61.7, "ano": 2025, "mes": 2, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 43988575, "costo": 82181296, "resultado": -38192721, "margen": -86.8, "ano": 2025, "mes": 3, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 26759860, "resultado": -26759860, "margen": -100, "ano": 2025, "mes": 4, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 12860183, "resultado": -12860183, "margen": -100, "ano": 2025, "mes": 5, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 2018630, "costo": 12023650, "resultado": -10005020, "margen": -495.6, "ano": 2025, "mes": 6, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 46211734, "resultado": -46211734, "margen": -100, "ano": 2025, "mes": 7, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 29704298, "resultado": -29704298, "margen": -100, "ano": 2025, "mes": 8, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 109797321, "resultado": -109797321, "margen": -100, "ano": 2025, "mes": 9, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 158700570, "resultado": -158700570, "margen": -100, "ano": 2025, "mes": 10, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 938894107, "costo": 611627546, "resultado": 327266561, "margen": 34.9, "ano": 2025, "mes": 11, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 3973213514, "costo": 1508754699, "resultado": 2464458815, "margen": 62.0, "ano": 2025, "mes": 12, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 1051410891, "costo": 400256410, "resultado": 651154481, "margen": 61.9, "ano": 2026, "mes": 1, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 163460070, "costo": 155164227, "resultado": 8295843, "margen": 5.1, "ano": 2026, "mes": 2, "cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 181620, "resultado": -181620, "margen": -100, "ano": 2024, "mes": 10, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 145863, "resultado": -145863, "margen": -100, "ano": 2024, "mes": 11, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 2956108, "resultado": -2956108, "margen": -100, "ano": 2025, "mes": 9, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 76134504, "resultado": -76134504, "margen": -100, "ano": 2025, "mes": 10, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 197630516, "costo": 29029053, "resultado": 168601463, "margen": 85.3, "ano": 2025, "mes": 11, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 853163044, "costo": 92874754, "resultado": 760288290, "margen": 89.1, "ano": 2025, "mes": 12, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 219672796, "costo": 63637892, "resultado": 156034904, "margen": 71.0, "ano": 2026, "mes": 1, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 40819176, "costo": 0, "resultado": 40819176, "margen": 100.0, "ano": 2026, "mes": 2, "cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 10053231, "resultado": -10053231, "margen": -100, "ano": 2024, "mes": 1, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 1438538, "resultado": -1438538, "margen": -100, "ano": 2024, "mes": 10, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 2954495, "resultado": -2954495, "margen": -100, "ano": 2024, "mes": 11, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 22437, "resultado": -22437, "margen": -100, "ano": 2024, "mes": 12, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 188740, "resultado": -188740, "margen": -100, "ano": 2025, "mes": 8, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 72900, "resultado": -72900, "margen": -100, "ano": 2025, "mes": 9, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 158426, "resultado": -158426, "margen": -100, "ano": 2025, "mes": 10, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 4547879, "resultado": -4547879, "margen": -100, "ano": 2025, "mes": 11, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 16280770, "resultado": -16280770, "margen": -100, "ano": 2025, "mes": 12, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 9984450, "resultado": -9984450, "margen": -100, "ano": 2026, "mes": 1, "cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 1471585, "resultado": -1471585, "margen": -100, "ano": 2024, "mes": 9, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 326881, "resultado": -326881, "margen": -100, "ano": 2024, "mes": 10, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 44077, "resultado": -44077, "margen": -100, "ano": 2024, "mes": 11, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 147000, "resultado": -147000, "margen": -100, "ano": 2024, "mes": 12, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 1090295, "resultado": -1090295, "margen": -100, "ano": 2025, "mes": 9, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 1524258, "resultado": -1524258, "margen": -100, "ano": 2025, "mes": 10, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 214521, "resultado": -214521, "margen": -100, "ano": 2025, "mes": 11, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 198620, "resultado": -198620, "margen": -100, "ano": 2025, "mes": 12, "cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 6128412, "resultado": -6128412, "margen": -100, "ano": 2024, "mes": 1, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 167090, "resultado": -167090, "margen": -100, "ano": 2024, "mes": 10, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 3624457, "resultado": -3624457, "margen": -100, "ano": 2024, "mes": 11, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 7185, "resultado": -7185, "margen": -100, "ano": 2024, "mes": 12, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 1191465, "resultado": -1191465, "margen": -100, "ano": 2025, "mes": 1, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "mes": 6, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 26302, "resultado": -26302, "margen": -100, "ano": 2025, "mes": 7, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 6026554, "resultado": -6026554, "margen": -100, "ano": 2025, "mes": 8, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 933175, "resultado": -933175, "margen": -100, "ano": 2025, "mes": 9, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 12699736, "resultado": -12699736, "margen": -100, "ano": 2025, "mes": 10, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 7135929, "resultado": -7135929, "margen": -100, "ano": 2025, "mes": 11, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 21418666, "resultado": -21418666, "margen": -100, "ano": 2025, "mes": 12, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 11108718, "resultado": -11108718, "margen": -100, "ano": 2026, "mes": 1, "cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas"}, {"ingreso": 0, "costo": 55361, "resultado": -55361, "margen": -100, "ano": 2024, "mes": 1, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 822800, "resultado": -822800, "margen": -100, "ano": 2024, "mes": 3, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 622080, "resultado": -622080, "margen": -100, "ano": 2024, "mes": 4, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 3601261, "resultado": -3601261, "margen": -100, "ano": 2024, "mes": 5, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1727367, "resultado": -1727367, "margen": -100, "ano": 2024, "mes": 6, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 40718676, "costo": 6610987, "resultado": 34107689, "margen": 83.8, "ano": 2024, "mes": 7, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 43022587, "costo": 11611057, "resultado": 31411530, "margen": 73.0, "ano": 2024, "mes": 8, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 42917676, "costo": 4099281, "resultado": 38818395, "margen": 90.4, "ano": 2024, "mes": 9, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1125, "resultado": -1125, "margen": -100, "ano": 2024, "mes": 10, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 45357, "resultado": -45357, "margen": -100, "ano": 2024, "mes": 11, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 53739, "resultado": -53739, "margen": -100, "ano": 2024, "mes": 12, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1137, "resultado": -1137, "margen": -100, "ano": 2025, "mes": 1, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 42995, "resultado": -42995, "margen": -100, "ano": 2025, "mes": 2, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 45533, "resultado": -45533, "margen": -100, "ano": 2025, "mes": 3, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1209, "resultado": -1209, "margen": -100, "ano": 2025, "mes": 4, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1202, "resultado": -1202, "margen": -100, "ano": 2025, "mes": 5, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1238, "resultado": -1238, "margen": -100, "ano": 2025, "mes": 6, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1242, "resultado": -1242, "margen": -100, "ano": 2025, "mes": 7, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 175069, "resultado": -175069, "margen": -100, "ano": 2025, "mes": 8, "cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1082252, "resultado": -1082252, "margen": -100, "ano": 2024, "mes": 5, "cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 4725048, "resultado": -4725048, "margen": -100, "ano": 2024, "mes": 6, "cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 4939196, "resultado": -4939196, "margen": -100, "ano": 2024, "mes": 7, "cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 4103752, "resultado": -4103752, "margen": -100, "ano": 2024, "mes": 8, "cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 2322866, "resultado": -2322866, "margen": -100, "ano": 2024, "mes": 9, "cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 4139816, "resultado": -4139816, "margen": -100, "ano": 2024, "mes": 10, "cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 100921, "resultado": -100921, "margen": -100, "ano": 2024, "mes": 7, "cod": "870-3", "nombre": "CHAM - CALIDAD MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1085728, "resultado": -1085728, "margen": -100, "ano": 2024, "mes": 5, "cod": "870-4", "nombre": "CHAM - BODEGA MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 943222, "resultado": -943222, "margen": -100, "ano": 2024, "mes": 6, "cod": "870-4", "nombre": "CHAM - BODEGA MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1163572, "resultado": -1163572, "margen": -100, "ano": 2024, "mes": 7, "cod": "870-4", "nombre": "CHAM - BODEGA MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1169905, "resultado": -1169905, "margen": -100, "ano": 2024, "mes": 8, "cod": "870-4", "nombre": "CHAM - BODEGA MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 73290, "resultado": -73290, "margen": -100, "ano": 2024, "mes": 9, "cod": "870-4", "nombre": "CHAM - BODEGA MANDARINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 5, "cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos"}, {"ingreso": 64065870, "costo": 5124046, "resultado": 58941824, "margen": 92.0, "ano": 2024, "mes": 6, "cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos"}, {"ingreso": 142226929, "costo": 9716262, "resultado": 132510667, "margen": 93.2, "ano": 2024, "mes": 7, "cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos"}, {"ingreso": 37291619, "costo": 2141504, "resultado": 35150115, "margen": 94.3, "ano": 2024, "mes": 8, "cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos"}, {"ingreso": 9719776, "costo": 111848, "resultado": 9607928, "margen": 98.8, "ano": 2024, "mes": 9, "cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 269, "resultado": -269, "margen": -100, "ano": 2025, "mes": 2, "cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 9398967, "resultado": -9398967, "margen": -100, "ano": 2024, "mes": 4, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 60953620, "resultado": -60953620, "margen": -100, "ano": 2024, "mes": 5, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 2357617, "costo": 54441039, "resultado": -52083422, "margen": -2209.2, "ano": 2024, "mes": 6, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 6936565, "costo": 82615526, "resultado": -75678961, "margen": -1091.0, "ano": 2024, "mes": 7, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 83179192, "costo": 83625243, "resultado": -446051, "margen": -0.5, "ano": 2024, "mes": 8, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 77093618, "resultado": -77093618, "margen": -100, "ano": 2024, "mes": 9, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 9827085, "resultado": -9827085, "margen": -100, "ano": 2024, "mes": 10, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 73238, "resultado": -73238, "margen": -100, "ano": 2024, "mes": 11, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 40264, "resultado": -40264, "margen": -100, "ano": 2024, "mes": 12, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 575301, "resultado": -575301, "margen": -100, "ano": 2025, "mes": 1, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 515, "resultado": -515, "margen": -100, "ano": 2025, "mes": 8, "cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos"}, {"ingreso": 96292355, "costo": 23914744, "resultado": 72377611, "margen": 75.2, "ano": 2024, "mes": 5, "cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos"}, {"ingreso": 45446378, "costo": 20549701, "resultado": 24896677, "margen": 54.8, "ano": 2024, "mes": 6, "cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 7450837, "resultado": -7450837, "margen": -100, "ano": 2024, "mes": 7, "cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 258623, "resultado": -258623, "margen": -100, "ano": 2024, "mes": 8, "cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 1524181, "resultado": -1524181, "margen": -100, "ano": 2024, "mes": 9, "cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 108668, "resultado": -108668, "margen": -100, "ano": 2025, "mes": 1, "cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 5, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 6, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 7, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 6810198, "resultado": -6810198, "margen": -100, "ano": 2024, "mes": 8, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 11594203, "resultado": -11594203, "margen": -100, "ano": 2024, "mes": 9, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 10, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 31092, "resultado": -31092, "margen": -100, "ano": 2024, "mes": 11, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 12, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2025, "mes": 1, "cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción"}, {"ingreso": 0, "costo": 150472, "resultado": -150472, "margen": -100, "ano": 2024, "mes": 1, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 827204, "resultado": -827204, "margen": -100, "ano": 2024, "mes": 2, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 16236000, "resultado": -16236000, "margen": -100, "ano": 2024, "mes": 3, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 30749370, "resultado": -30749370, "margen": -100, "ano": 2024, "mes": 5, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 1312500, "resultado": -1312500, "margen": -100, "ano": 2024, "mes": 6, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 9851765, "resultado": -9851765, "margen": -100, "ano": 2024, "mes": 7, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 8722229, "resultado": -8722229, "margen": -100, "ano": 2024, "mes": 8, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 2461713, "resultado": -2461713, "margen": -100, "ano": 2024, "mes": 9, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 31351, "resultado": -31351, "margen": -100, "ano": 2024, "mes": 10, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 3051394, "resultado": -3051394, "margen": -100, "ano": 2024, "mes": 11, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 8241207, "resultado": -8241207, "margen": -100, "ano": 2024, "mes": 12, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 287102, "resultado": -287102, "margen": -100, "ano": 2025, "mes": 2, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 9808956, "resultado": -9808956, "margen": -100, "ano": 2025, "mes": 4, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 5107193, "resultado": -5107193, "margen": -100, "ano": 2025, "mes": 5, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 4501742, "resultado": -4501742, "margen": -100, "ano": 2025, "mes": 7, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 3516561, "resultado": -3516561, "margen": -100, "ano": 2025, "mes": 8, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 5462865, "resultado": -5462865, "margen": -100, "ano": 2025, "mes": 9, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 938997, "resultado": -938997, "margen": -100, "ano": 2025, "mes": 10, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 3615518, "resultado": -3615518, "margen": -100, "ano": 2025, "mes": 11, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 15156943, "resultado": -15156943, "margen": -100, "ano": 2025, "mes": 12, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 1797790, "resultado": -1797790, "margen": -100, "ano": 2026, "mes": 1, "cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 0, "resultado": 0, "margen": 0, "ano": 2024, "mes": 1, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 258200, "resultado": -258200, "margen": -100, "ano": 2024, "mes": 2, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 2534028, "resultado": -2534028, "margen": -100, "ano": 2024, "mes": 3, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 2508624, "resultado": -2508624, "margen": -100, "ano": 2024, "mes": 5, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 1132811, "resultado": -1132811, "margen": -100, "ano": 2024, "mes": 6, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 1983478, "resultado": -1983478, "margen": -100, "ano": 2024, "mes": 7, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 649687, "resultado": -649687, "margen": -100, "ano": 2024, "mes": 8, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 17939505, "resultado": -17939505, "margen": -100, "ano": 2025, "mes": 1, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 13874639, "resultado": -13874639, "margen": -100, "ano": 2025, "mes": 2, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 243338, "resultado": -243338, "margen": -100, "ano": 2025, "mes": 4, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}, {"ingreso": 0, "costo": 357503, "resultado": -357503, "margen": -100, "ano": 2026, "mes": 2, "cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing"}], "ingresos_detalle": [{"cod": "840", "ano": 2024, "cuenta": "Servicios Packing", "monto": 1920000}, {"cod": "840", "ano": 2025, "cuenta": "Venta Insumos Packing", "monto": 24276808}, {"cod": "850", "ano": 2024, "cuenta": "Ventas Producción", "monto": 69787086}, {"cod": "855", "ano": 2024, "cuenta": "Servicios Packing", "monto": 157372972}, {"cod": "855", "ano": 2024, "cuenta": "Servicios Frío", "monto": 3117450}, {"cod": "855", "ano": 2024, "cuenta": "Fruta Comercial de Terceros", "monto": 70512335}, {"cod": "855", "ano": 2024, "cuenta": "Venta Insumos Packing", "monto": 3424728}, {"cod": "855", "ano": 2024, "cuenta": "Ventas Producción", "monto": 63778770}, {"cod": "855", "ano": 2025, "cuenta": "Servicios Packing", "monto": 858945607}, {"cod": "855", "ano": 2025, "cuenta": "Servicios Frío", "monto": 7033090}, {"cod": "855", "ano": 2025, "cuenta": "Fruta Comercial de Terceros", "monto": 225907852}, {"cod": "855", "ano": 2025, "cuenta": "Venta Insumos Packing", "monto": 19509261}, {"cod": "855", "ano": 2026, "cuenta": "Servicios Packing", "monto": 12158117}, {"cod": "855", "ano": 2026, "cuenta": "Fruta Comercial de Terceros", "monto": 23496670}, {"cod": "855", "ano": 2026, "cuenta": "Venta Insumos Packing", "monto": 40332006}, {"cod": "855", "ano": 2026, "cuenta": "Ventas Producción", "monto": 131979387}, {"cod": "855-01", "ano": 2025, "cuenta": "Servicios Frío", "monto": 162026237}, {"cod": "855-01", "ano": 2026, "cuenta": "Servicios Frío", "monto": 5160681}, {"cod": "855-01", "ano": 2026, "cuenta": "Ventas Producción", "monto": 6181359}, {"cod": "855-04", "ano": 2024, "cuenta": "Ventas Producción", "monto": 730817}, {"cod": "855-04", "ano": 2026, "cuenta": "Servicios Packing", "monto": 276270}, {"cod": "855-04", "ano": 2026, "cuenta": "Ventas Producción", "monto": 10681466}, {"cod": "860", "ano": 2024, "cuenta": "Servicios Packing", "monto": 10531860577}, {"cod": "860", "ano": 2024, "cuenta": "Servicios Frío", "monto": 28705900}, {"cod": "860", "ano": 2024, "cuenta": "Venta Insumos Packing", "monto": 41577041}, {"cod": "860", "ano": 2024, "cuenta": "Ingresos Packing Frío", "monto": 244998}, {"cod": "860", "ano": 2024, "cuenta": "Venta de Insumos", "monto": 1140000}, {"cod": "860", "ano": 2025, "cuenta": "Servicios Packing", "monto": 5979829278}, {"cod": "860", "ano": 2025, "cuenta": "Servicios Frío", "monto": 40950427}, {"cod": "860", "ano": 2025, "cuenta": "Venta Insumos Packing", "monto": 59545999}, {"cod": "860", "ano": 2026, "cuenta": "Servicios Packing", "monto": 1227998167}, {"cod": "860", "ano": 2026, "cuenta": "Servicios Frío", "monto": -14416805}, {"cod": "860", "ano": 2026, "cuenta": "Venta Insumos Packing", "monto": 1289599}, {"cod": "860-01", "ano": 2025, "cuenta": "Servicios Packing", "monto": 414641}, {"cod": "860-01", "ano": 2025, "cuenta": "Servicios Frío", "monto": 1050378919}, {"cod": "860-01", "ano": 2026, "cuenta": "Servicios Frío", "monto": 260491972}, {"cod": "870", "ano": 2024, "cuenta": "Servicios Packing", "monto": 110393271}, {"cod": "870", "ano": 2024, "cuenta": "Venta Insumos Packing", "monto": 15896918}, {"cod": "870", "ano": 2024, "cuenta": "Venta de Insumos", "monto": 368750}, {"cod": "871", "ano": 2024, "cuenta": "Servicios Packing", "monto": 252885447}, {"cod": "871", "ano": 2024, "cuenta": "Venta de Insumos", "monto": 418747}, {"cod": "872", "ano": 2024, "cuenta": "Servicios Packing", "monto": 91734626}, {"cod": "872", "ano": 2024, "cuenta": "Venta Insumos Packing", "monto": 369996}, {"cod": "872", "ano": 2024, "cuenta": "Venta de Insumos", "monto": 368752}, {"cod": "873", "ano": 2024, "cuenta": "Servicios Packing", "monto": 141738733}], "costos_detalle": [{"cod": "100002", "ano": 2024, "categoria": "Materiales", "monto": 343745}, {"cod": "100002", "ano": 2025, "categoria": "Materiales", "monto": 61190}, {"cod": "100002", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 150000}, {"cod": "840", "ano": 2024, "categoria": "Mano de Obra", "monto": 7366955}, {"cod": "840", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 34491681}, {"cod": "840", "ano": 2024, "categoria": "Materiales", "monto": 15171132}, {"cod": "840", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 50937943}, {"cod": "840", "ano": 2024, "categoria": "Productos Químicos", "monto": 7000}, {"cod": "840", "ano": 2024, "categoria": "Fletes", "monto": 180000}, {"cod": "840", "ano": 2024, "categoria": "Servicios Básicos", "monto": 1360622}, {"cod": "840", "ano": 2024, "categoria": "Asesorías Técnicas", "monto": 9123662}, {"cod": "840", "ano": 2024, "categoria": "Otros Costos", "monto": 20867325}, {"cod": "840", "ano": 2025, "categoria": "Mano de Obra", "monto": 3045614}, {"cod": "840", "ano": 2025, "categoria": "Servicios de Terceros", "monto": 16085323}, {"cod": "840", "ano": 2025, "categoria": "Materiales", "monto": 3596920}, {"cod": "840", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 19668173}, {"cod": "840", "ano": 2025, "categoria": "Combustible", "monto": 260500}, {"cod": "840", "ano": 2025, "categoria": "Fletes", "monto": 1770000}, {"cod": "840", "ano": 2025, "categoria": "Servicios Básicos", "monto": 275502}, {"cod": "840", "ano": 2025, "categoria": "Asesorías Técnicas", "monto": 7837136}, {"cod": "840", "ano": 2025, "categoria": "Otros Costos", "monto": 6709615}, {"cod": "840", "ano": 2026, "categoria": "Servicios de Terceros", "monto": 5427164}, {"cod": "840", "ano": 2026, "categoria": "Materiales", "monto": 3200}, {"cod": "840", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 2201778}, {"cod": "840", "ano": 2026, "categoria": "Otros Costos", "monto": 1098153}, {"cod": "850", "ano": 2024, "categoria": "Mano de Obra", "monto": 138113077}, {"cod": "850", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 384000}, {"cod": "850", "ano": 2024, "categoria": "Materiales", "monto": 11242838}, {"cod": "850", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 3313554}, {"cod": "850", "ano": 2024, "categoria": "Combustible", "monto": 20540}, {"cod": "850", "ano": 2024, "categoria": "Otros Costos", "monto": 46404}, {"cod": "850", "ano": 2025, "categoria": "Mano de Obra", "monto": 159524620}, {"cod": "850", "ano": 2025, "categoria": "Materiales", "monto": 5731706}, {"cod": "850", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 31932}, {"cod": "850", "ano": 2025, "categoria": "Combustible", "monto": 320793}, {"cod": "850", "ano": 2025, "categoria": "Otros Costos", "monto": 391865}, {"cod": "850", "ano": 2026, "categoria": "Mano de Obra", "monto": 21985619}, {"cod": "850", "ano": 2026, "categoria": "Materiales", "monto": 123981}, {"cod": "851", "ano": 2024, "categoria": "Mano de Obra", "monto": 149000}, {"cod": "851", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 367330}, {"cod": "851", "ano": 2024, "categoria": "Asesorías Técnicas", "monto": 868000}, {"cod": "851", "ano": 2025, "categoria": "Materiales", "monto": 66042}, {"cod": "8", "ano": 2024, "categoria": "Mano de Obra", "monto": 720000}, {"cod": "8", "ano": 2025, "categoria": "Mano de Obra", "monto": 4065}, {"cod": "855", "ano": 2024, "categoria": "Mano de Obra", "monto": 164918682}, {"cod": "855", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 2216303}, {"cod": "855", "ano": 2024, "categoria": "Materiales", "monto": 14411329}, {"cod": "855", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 5404025}, {"cod": "855", "ano": 2024, "categoria": "Productos Químicos", "monto": 20491190}, {"cod": "855", "ano": 2024, "categoria": "Servicios Básicos", "monto": 25673624}, {"cod": "855", "ano": 2024, "categoria": "Mercadería de Terceros", "monto": 108430685}, {"cod": "855", "ano": 2024, "categoria": "Otros Costos", "monto": 2075508}, {"cod": "855", "ano": 2025, "categoria": "Mano de Obra", "monto": 454795560}, {"cod": "855", "ano": 2025, "categoria": "Servicios de Terceros", "monto": 50866952}, {"cod": "855", "ano": 2025, "categoria": "Materiales", "monto": 283613589}, {"cod": "855", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 17409055}, {"cod": "855", "ano": 2025, "categoria": "Productos Químicos", "monto": 9268796}, {"cod": "855", "ano": 2025, "categoria": "Fletes", "monto": 6150000}, {"cod": "855", "ano": 2025, "categoria": "Servicios Básicos", "monto": 86423765}, {"cod": "855", "ano": 2025, "categoria": "Mercadería de Terceros", "monto": 172968481}, {"cod": "855", "ano": 2025, "categoria": "Otros Costos", "monto": 22968585}, {"cod": "855", "ano": 2026, "categoria": "Mano de Obra", "monto": 202699488}, {"cod": "855", "ano": 2026, "categoria": "Servicios de Terceros", "monto": 10855865}, {"cod": "855", "ano": 2026, "categoria": "Materiales", "monto": 13085033}, {"cod": "855", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 21474915}, {"cod": "855", "ano": 2026, "categoria": "Productos Químicos", "monto": 1234727}, {"cod": "855", "ano": 2026, "categoria": "Servicios Básicos", "monto": 9161636}, {"cod": "855", "ano": 2026, "categoria": "Asesorías Técnicas", "monto": 939986}, {"cod": "855", "ano": 2026, "categoria": "Otros Costos", "monto": 492906}, {"cod": "855-01", "ano": 2025, "categoria": "Mano de Obra", "monto": 2080510}, {"cod": "855-01", "ano": 2025, "categoria": "Servicios de Terceros", "monto": 2456768}, {"cod": "855-01", "ano": 2025, "categoria": "Materiales", "monto": 413747}, {"cod": "855-01", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 4300157}, {"cod": "855-01", "ano": 2025, "categoria": "Fletes", "monto": 150000}, {"cod": "855-01", "ano": 2025, "categoria": "Servicios Básicos", "monto": 11603672}, {"cod": "855-01", "ano": 2025, "categoria": "Asesorías Técnicas", "monto": 1000000}, {"cod": "855-01", "ano": 2025, "categoria": "Otros Costos", "monto": 603003}, {"cod": "855-01", "ano": 2026, "categoria": "Servicios de Terceros", "monto": 7590144}, {"cod": "855-01", "ano": 2026, "categoria": "Materiales", "monto": 534794}, {"cod": "855-01", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 462500}, {"cod": "855-01", "ano": 2026, "categoria": "Fletes", "monto": 560000}, {"cod": "855-01", "ano": 2026, "categoria": "Servicios Básicos", "monto": 27108112}, {"cod": "855-01", "ano": 2026, "categoria": "Otros Costos", "monto": 85388}, {"cod": "855-02", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 1012458}, {"cod": "855-02", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 94050}, {"cod": "855-02", "ano": 2025, "categoria": "Servicios de Terceros", "monto": 7839967}, {"cod": "855-02", "ano": 2025, "categoria": "Materiales", "monto": 706396}, {"cod": "855-02", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 630799}, {"cod": "855-02", "ano": 2025, "categoria": "Otros Costos", "monto": 10369760}, {"cod": "855-02", "ano": 2026, "categoria": "Servicios de Terceros", "monto": 12856931}, {"cod": "855-02", "ano": 2026, "categoria": "Materiales", "monto": 427426}, {"cod": "855-02", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 2265299}, {"cod": "855-02", "ano": 2026, "categoria": "Otros Costos", "monto": 345000}, {"cod": "855-03", "ano": 2024, "categoria": "Materiales", "monto": 42815}, {"cod": "855-03", "ano": 2025, "categoria": "Materiales", "monto": 14781}, {"cod": "855-03", "ano": 2026, "categoria": "Materiales", "monto": 24153}, {"cod": "855-04", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 3269485}, {"cod": "855-04", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 94050}, {"cod": "855-04", "ano": 2024, "categoria": "Servicios Básicos", "monto": 73290}, {"cod": "855-04", "ano": 2025, "categoria": "Servicios de Terceros", "monto": 3557231}, {"cod": "855-04", "ano": 2025, "categoria": "Materiales", "monto": 822548}, {"cod": "855-04", "ano": 2025, "categoria": "Fletes", "monto": 233674}, {"cod": "855-04", "ano": 2025, "categoria": "Servicios Básicos", "monto": 383675}, {"cod": "855-04", "ano": 2025, "categoria": "Otros Costos", "monto": 10369759}, {"cod": "855-04", "ano": 2026, "categoria": "Servicios de Terceros", "monto": 1628462}, {"cod": "855-04", "ano": 2026, "categoria": "Materiales", "monto": 122437}, {"cod": "855-04", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 25210}, {"cod": "860", "ano": 2024, "categoria": "Mano de Obra", "monto": 2308491904}, {"cod": "860", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 1891309547}, {"cod": "860", "ano": 2024, "categoria": "Materiales", "monto": 112630758}, {"cod": "860", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 39106390}, {"cod": "860", "ano": 2024, "categoria": "Productos Químicos", "monto": 68547126}, {"cod": "860", "ano": 2024, "categoria": "Combustible", "monto": 661923}, {"cod": "860", "ano": 2024, "categoria": "Fletes", "monto": 650000}, {"cod": "860", "ano": 2024, "categoria": "Servicios Básicos", "monto": 87138764}, {"cod": "860", "ano": 2024, "categoria": "Otros Costos", "monto": 22458080}, {"cod": "860", "ano": 2025, "categoria": "Mano de Obra", "monto": 1476194252}, {"cod": "860", "ano": 2025, "categoria": "Servicios de Terceros", "monto": 902208868}, {"cod": "860", "ano": 2025, "categoria": "Materiales", "monto": 404729872}, {"cod": "860", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 80079802}, {"cod": "860", "ano": 2025, "categoria": "Productos Químicos", "monto": 24786108}, {"cod": "860", "ano": 2025, "categoria": "Combustible", "monto": 61002}, {"cod": "860", "ano": 2025, "categoria": "Fletes", "monto": 1912500}, {"cod": "860", "ano": 2025, "categoria": "Servicios Básicos", "monto": 85294212}, {"cod": "860", "ano": 2025, "categoria": "Otros Costos", "monto": 45249220}, {"cod": "860", "ano": 2026, "categoria": "Mano de Obra", "monto": 304198138}, {"cod": "860", "ano": 2026, "categoria": "Servicios de Terceros", "monto": 210121270}, {"cod": "860", "ano": 2026, "categoria": "Materiales", "monto": 1390438}, {"cod": "860", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 3298082}, {"cod": "860", "ano": 2026, "categoria": "Servicios Básicos", "monto": 36412709}, {"cod": "860-01", "ano": 2024, "categoria": "Materiales", "monto": 195942}, {"cod": "860-01", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 30000}, {"cod": "860-01", "ano": 2024, "categoria": "Otros Costos", "monto": 101541}, {"cod": "860-01", "ano": 2025, "categoria": "Mano de Obra", "monto": 8559560}, {"cod": "860-01", "ano": 2025, "categoria": "Servicios de Terceros", "monto": 138209422}, {"cod": "860-01", "ano": 2025, "categoria": "Materiales", "monto": 3371608}, {"cod": "860-01", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 28434614}, {"cod": "860-01", "ano": 2025, "categoria": "Fletes", "monto": 90000}, {"cod": "860-01", "ano": 2025, "categoria": "Servicios Básicos", "monto": 15988104}, {"cod": "860-01", "ano": 2025, "categoria": "Otros Costos", "monto": 6341111}, {"cod": "860-01", "ano": 2026, "categoria": "Mano de Obra", "monto": 3880720}, {"cod": "860-01", "ano": 2026, "categoria": "Servicios de Terceros", "monto": 51281468}, {"cod": "860-01", "ano": 2026, "categoria": "Servicios Básicos", "monto": 8475704}, {"cod": "860-02", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 13835003}, {"cod": "860-02", "ano": 2024, "categoria": "Materiales", "monto": 219462}, {"cod": "860-02", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 261000}, {"cod": "860-02", "ano": 2024, "categoria": "Productos Químicos", "monto": 144000}, {"cod": "860-02", "ano": 2024, "categoria": "Otros Costos", "monto": 9236}, {"cod": "860-02", "ano": 2025, "categoria": "Servicios de Terceros", "monto": 11002858}, {"cod": "860-02", "ano": 2025, "categoria": "Materiales", "monto": 546990}, {"cod": "860-02", "ano": 2025, "categoria": "Otros Costos", "monto": 9698867}, {"cod": "860-02", "ano": 2026, "categoria": "Servicios de Terceros", "monto": 9984450}, {"cod": "860-03", "ano": 2024, "categoria": "Mano de Obra", "monto": 147000}, {"cod": "860-03", "ano": 2024, "categoria": "Materiales", "monto": 1061458}, {"cod": "860-03", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 616165}, {"cod": "860-03", "ano": 2024, "categoria": "Productos Químicos", "monto": 164920}, {"cod": "860-03", "ano": 2025, "categoria": "Materiales", "monto": 2821830}, {"cod": "860-03", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 198620}, {"cod": "860-03", "ano": 2025, "categoria": "Otros Costos", "monto": 7244}, {"cod": "860-04", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 9177037}, {"cod": "860-04", "ano": 2024, "categoria": "Materiales", "monto": 476027}, {"cod": "860-04", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 127500}, {"cod": "860-04", "ano": 2024, "categoria": "Servicios Básicos", "monto": 146580}, {"cod": "860-04", "ano": 2025, "categoria": "Servicios de Terceros", "monto": 22651822}, {"cod": "860-04", "ano": 2025, "categoria": "Materiales", "monto": 6118766}, {"cod": "860-04", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 9388750}, {"cod": "860-04", "ano": 2025, "categoria": "Servicios Básicos", "monto": 383675}, {"cod": "860-04", "ano": 2025, "categoria": "Otros Costos", "monto": 10888814}, {"cod": "860-04", "ano": 2026, "categoria": "Servicios de Terceros", "monto": 9212983}, {"cod": "860-04", "ano": 2026, "categoria": "Materiales", "monto": 1674000}, {"cod": "860-04", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 145000}, {"cod": "860-04", "ano": 2026, "categoria": "Servicios Básicos", "monto": 76735}, {"cod": "870", "ano": 2024, "categoria": "Mano de Obra", "monto": 24506129}, {"cod": "870", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 150000}, {"cod": "870", "ano": 2024, "categoria": "Materiales", "monto": 3866116}, {"cod": "870", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 710668}, {"cod": "870", "ano": 2024, "categoria": "Combustible", "monto": 6870}, {"cod": "870", "ano": 2024, "categoria": "Otros Costos", "monto": 10632}, {"cod": "870", "ano": 2025, "categoria": "Mano de Obra", "monto": 269625}, {"cod": "870-2", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 19872930}, {"cod": "870-2", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 1440000}, {"cod": "870-3", "ano": 2024, "categoria": "Materiales", "monto": 100921}, {"cod": "870-4", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 4211897}, {"cod": "870-4", "ano": 2024, "categoria": "Materiales", "monto": 3950}, {"cod": "870-4", "ano": 2024, "categoria": "Servicios Básicos", "monto": 219870}, {"cod": "871", "ano": 2024, "categoria": "Mano de Obra", "monto": 16865110}, {"cod": "871", "ano": 2024, "categoria": "Materiales", "monto": 228550}, {"cod": "871", "ano": 2025, "categoria": "Mano de Obra", "monto": 269}, {"cod": "872", "ano": 2024, "categoria": "Mano de Obra", "monto": 199084789}, {"cod": "872", "ano": 2024, "categoria": "Servicios de Terceros", "monto": 33232418}, {"cod": "872", "ano": 2024, "categoria": "Materiales", "monto": 21809753}, {"cod": "872", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 5909815}, {"cod": "872", "ano": 2024, "categoria": "Productos Químicos", "monto": 60993757}, {"cod": "872", "ano": 2024, "categoria": "Combustible", "monto": 80000}, {"cod": "872", "ano": 2024, "categoria": "Fletes", "monto": 487500}, {"cod": "872", "ano": 2024, "categoria": "Servicios Básicos", "monto": 51900940}, {"cod": "872", "ano": 2024, "categoria": "Asesorías Técnicas", "monto": 1821741}, {"cod": "872", "ano": 2024, "categoria": "Otros Costos", "monto": 2747887}, {"cod": "872", "ano": 2025, "categoria": "Mano de Obra", "monto": 575816}, {"cod": "873", "ano": 2024, "categoria": "Mano de Obra", "monto": 53698086}, {"cod": "873", "ano": 2025, "categoria": "Mano de Obra", "monto": 108668}, {"cod": "805", "ano": 2024, "categoria": "Mano de Obra", "monto": 11594203}, {"cod": "805", "ano": 2024, "categoria": "Materiales", "monto": 31092}, {"cod": "805", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 6810198}, {"cod": "MQP001", "ano": 2024, "categoria": "Materiales", "monto": 843000}, {"cod": "MQP001", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 74699205}, {"cod": "MQP001", "ano": 2024, "categoria": "Fletes", "monto": 6093000}, {"cod": "MQP001", "ano": 2025, "categoria": "Materiales", "monto": 1707056}, {"cod": "MQP001", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 46688821}, {"cod": "MQP001", "ano": 2026, "categoria": "Materiales", "monto": 1765626}, {"cod": "MQP001", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 32164}, {"cod": "MQP002", "ano": 2024, "categoria": "Mantención y Reparación", "monto": 9066828}, {"cod": "MQP002", "ano": 2025, "categoria": "Mantención y Reparación", "monto": 32057482}, {"cod": "MQP002", "ano": 2026, "categoria": "Mantención y Reparación", "monto": 357503}], "catalogo": [{"cod": "100002", "nombre": "CHAM - PACKING + FRIGORÍFICO", "categoria": "General Packing", "nota": ""}, {"cod": "840", "nombre": "CHAM - PACKING-OFICINA", "categoria": "General Packing", "nota": ""}, {"cod": "850", "nombre": "CHAM - PRODUCCION PACKING", "categoria": "General Packing", "nota": ""}, {"cod": "850T", "nombre": "CHAM - PRODUCCION PACKING TRATOS", "categoria": "General Packing", "nota": "Tratos"}, {"cod": "851", "nombre": "PACK - RECEPCIÓN Y CONTROL DE CALIDAD", "categoria": "General Packing", "nota": ""}, {"cod": "8", "nombre": "PRESTACIÓN DE SERVICIOS 2", "categoria": "General Packing", "nota": ""}, {"cod": "9920", "nombre": "OBSOLETO - PACKING", "categoria": "General Packing", "nota": "Inactivo"}, {"cod": "855", "nombre": "CHAM - PACKING MANZANAS", "categoria": "Manzanas", "nota": ""}, {"cod": "855-01", "nombre": "CHAM - FRÍO MANZANAS", "categoria": "Manzanas", "nota": ""}, {"cod": "855-02", "nombre": "CHAM - RECEPCIÓN MANZANAS", "categoria": "Manzanas", "nota": ""}, {"cod": "855-03", "nombre": "CHAM - CALIDAD MANZANAS", "categoria": "Manzanas", "nota": ""}, {"cod": "855-04", "nombre": "CHAM - BODEGA MANZANAS", "categoria": "Manzanas", "nota": ""}, {"cod": "855T", "nombre": "CHAM - PACKING MANZANAS TRATOS", "categoria": "Manzanas", "nota": "Tratos"}, {"cod": "860", "nombre": "CHAM - PACKING CEREZAS", "categoria": "Cerezas", "nota": ""}, {"cod": "860-01", "nombre": "CHAM - FRÍO CEREZAS", "categoria": "Cerezas", "nota": ""}, {"cod": "860-02", "nombre": "CHAM - RECEPCIÓN CEREZAS", "categoria": "Cerezas", "nota": ""}, {"cod": "860-03", "nombre": "CHAM - CALIDAD CEREZAS", "categoria": "Cerezas", "nota": ""}, {"cod": "860-04", "nombre": "CHAM - BODEGA CEREZAS", "categoria": "Cerezas", "nota": ""}, {"cod": "860T", "nombre": "CHAM - PACKING CEREZAS TRATOS", "categoria": "Cerezas", "nota": "Tratos"}, {"cod": "870", "nombre": "CHAM - PACKING MANDARINAS", "categoria": "Cítricos", "nota": ""}, {"cod": "870-1", "nombre": "CHAM - FRÍO MANDARINAS", "categoria": "Cítricos", "nota": ""}, {"cod": "870-2", "nombre": "CHAM - RECEPCIÓN MANDARINAS", "categoria": "Cítricos", "nota": ""}, {"cod": "870-3", "nombre": "CHAM - CALIDAD MANDARINAS", "categoria": "Cítricos", "nota": ""}, {"cod": "870-4", "nombre": "CHAM - BODEGA MANDARINAS", "categoria": "Cítricos", "nota": ""}, {"cod": "870T", "nombre": "CHAM - PACKING MANDARINAS TRATOS", "categoria": "Cítricos", "nota": "Tratos"}, {"cod": "871", "nombre": "CHAM - PACKING NARANJAS", "categoria": "Cítricos", "nota": ""}, {"cod": "872", "nombre": "CHAM - PACKING CÍTRICOS", "categoria": "Cítricos", "nota": ""}, {"cod": "872T", "nombre": "CHAM - PACKING CÍTRICOS TRATOS", "categoria": "Cítricos", "nota": "Tratos"}, {"cod": "873", "nombre": "CHAM - PACKING CLEMENTINAS", "categoria": "Cítricos", "nota": ""}, {"cod": "873T", "nombre": "CHAM - PACKING CLEMENTINAS TRATOS", "categoria": "Cítricos", "nota": "Tratos"}, {"cod": "880", "nombre": "CHAM - FRÍO UVA", "categoria": "Carozos · Uva · Frigorífico", "nota": ""}, {"cod": "880T", "nombre": "CHAM - PACKING CAROZOS", "categoria": "Carozos · Uva · Frigorífico", "nota": ""}, {"cod": "802", "nombre": "CONSTRUCCION GALPON PATIO RECEPCION", "categoria": "Inversiones / Construcción", "nota": ""}, {"cod": "890", "nombre": "INVERSION PACKING", "categoria": "Inversiones / Construcción", "nota": ""}, {"cod": "895", "nombre": "CHAM - AMPLIACIÓN PACKING CEREZAS (2019)", "categoria": "Inversiones / Construcción", "nota": ""}, {"cod": "805", "nombre": "AMPLIACION PACKING CAROZOS-POMACEAS", "categoria": "Inversiones / Construcción", "nota": "Inactivo"}, {"cod": "MQP001", "nombre": "LINEA UNITEC CEREZAS", "categoria": "Maquinaria Packing", "nota": "CC extra"}, {"cod": "MQP002", "nombre": "LINEA FRUTOS REDONDOS", "categoria": "Maquinaria Packing", "nota": "CC extra"}]};
+const SUPA_URL = 'https://wjbwccacjdkuejcriode.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqYndjY2FjamRrdWVqY3Jpb2RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5ODY0ODksImV4cCI6MjA5MzU2MjQ4OX0.ZA2zLzyvs0sRRn9GcHYibkUrjT_ytEOij38-P0vWOuo';
+const db = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-const CATEGORIAS_ORDEN = ['Cerezas','Manzanas','Cítricos','Carozos · Uva · Frigorífico','General Packing','Maquinaria Packing','Inversiones / Construcción'];
-const CAT_COLOR = {
-  'Cerezas':'#dc2626','Manzanas':'#65a30d','Cítricos':'#eab308',
-  'Carozos · Uva · Frigorífico':'#a855f7','General Packing':'#0891b2',
-  'Maquinaria Packing':'#475569','Inversiones / Construcción':'#94a3b8'
+const LINEA_COLOR = {
+  'Cerezas':'#dc2626',
+  'Cítricos':'#f59e0b',
+  'Manzanas':'#059669',
+  'Carozos · Uva · Frigorífico':'#7c3aed',
+  'General Packing':'#6b7280',
+  'Inversiones / Construcción':'#0369a1'
 };
+const PRIMARY = '#c2410c';
+const DEFAULT_COLOR = '#94A3B8';
 
-let state = {
-  year: 2025,
-  month: 0,  // 0 = todo el año, 1-12 = mes específico
-  selectedCategoria: '',
-  selectedCC: '',
-};
+let LINEAS_ORDEN = [];
+let DATA = null;
+let state = { year: 2025, month: 0, selectedLinea: '', selectedCC: '' };
 let charts = {};
 
 const fCLP = v => new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',minimumFractionDigits:0}).format(v);
 const fM = v => { const a=Math.abs(v),s=v<0?'-':''; if(a>=1e9) return s+'$'+(a/1e9).toFixed(1).replace('.',',')+' B'; if(a>=1e6) return s+'$'+(a/1e6).toFixed(1).replace('.',',')+' M'; if(a>=1e3) return s+'$'+(a/1e3).toFixed(0)+' K'; return s+'$'+a; };
-const fN = v => new Intl.NumberFormat('es-CL').format(Math.round(v));
 const fPct = v => v.toFixed(1).replace('.',',')+'%';
-const yLabel = y => y === 2026 ? '2026 (ene-feb)' : String(y);
+const yLabel = y => String(y);
+const calc = (ing, costo) => { const r = ing - costo; const m = ing > 0 ? r/ing*100 : (costo > 0 ? -100 : 0); return { resultado: r, margen: Math.round(m*10)/10 }; };
 
 function kpiHTML(label, value, sub, danger) {
   return '<div class="card"><div class="p-5">' +
@@ -173,549 +197,550 @@ function kpiHTML(label, value, sub, danger) {
     '</div></div>';
 }
 
-function switchTab(id) {
-  document.querySelectorAll('[data-tab]').forEach(el=>el.classList.remove('visible'));
-  document.querySelector('[data-tab="' + id + '"]').classList.add('visible');
-  document.querySelectorAll('#tabs .tab-btn').forEach(b=>{
-    if(b.dataset.tabid === id){ b.classList.add('active'); b.classList.remove('text-orange-100/60'); }
-    else { b.classList.remove('active'); b.classList.add('text-orange-100/60'); }
-  });
-  updateBreadcrumb(id);
-  if(id==='general') renderGeneral();
-  if(id==='mensual') renderMensual();
-  if(id==='categoria') renderCategoria();
-  if(id==='cuartel') renderCC();
-}
+async function initData() {
+  const [ccRes, grupoRes, catRes] = await Promise.all([
+    db.from('v_3_pack_cc').select('*'),
+    db.from('v_3_pack_grupo').select('*'),
+    db.from('3_chamonate_centros_costo').select('cod,nombre,grupo').eq('linea_negocio','packing')
+  ]);
 
-document.querySelectorAll('#tabs .tab-btn').forEach(b=>{
-  b.addEventListener('click', ()=>switchTab(b.dataset.tabid));
-});
-
-function updateBreadcrumb(tabId) {
-  const map = {general:'General',mensual:'Mensual',categoria:'Por Categoría',cc:'Por CC'};
-  let parts = ['<span class="breadcrumb-item">Inicio</span>'];
-  parts.push('<span class="text-gray-300">→</span><span class="breadcrumb-item font-semibold text-gray-600">' + map[tabId] + '</span>');
-  if(tabId==='categoria' && state.selectedCategoria) parts.push('<span class="text-gray-300">→</span><span class="font-semibold" style="color:#c2410c">' + state.selectedCategoria + '</span>');
-  if(tabId==='cc' && state.selectedCC) {
-    const m = DATA.catalogo.find(x=>x.cod===state.selectedCC);
-    if(m) parts.push('<span class="text-gray-300">→</span><span class="font-semibold" style="color:#c2410c">' + m.nombre + '</span>');
+  if (ccRes.error || grupoRes.error || catRes.error) {
+    document.getElementById('loading-overlay').innerHTML = '<p class="text-red-500 font-semibold">Error cargando datos. Revisa la consola.</p>';
+    console.error(ccRes.error, grupoRes.error, catRes.error);
+    return;
   }
-  document.getElementById('breadcrumb').innerHTML = parts.join(' ');
+
+  const ccRows = ccRes.data, grupoRows = grupoRes.data, catRows = catRes.data;
+  const catalogo = catRows.map(r => ({ cod: r.cod, nombre: r.nombre, grupo: r.grupo }));
+  const lineasSet = new Set(catRows.map(r => r.grupo).filter(Boolean));
+  LINEAS_ORDEN = [...lineasSet].sort();
+
+  const ccAnnMap = {};
+  ccRows.forEach(r => {
+    const k = r.cod + '-' + r.ano;
+    if (!ccAnnMap[k]) ccAnnMap[k] = { cod:r.cod, nombre:r.nombre, grupo:r.grupo, ano:+r.ano, ingreso:0, costo:0 };
+    ccAnnMap[k].ingreso += +r.ingresos; ccAnnMap[k].costo += +r.costos;
+  });
+  const resumen_cc = Object.values(ccAnnMap).map(r => ({ ...r, ...calc(r.ingreso, r.costo) }));
+
+  const resumen_cc_mes = ccRows.map(r => {
+    const ing = +r.ingresos, cos = +r.costos;
+    return { cod:r.cod, nombre:r.nombre, grupo:r.grupo, ano:+r.ano, mes:+r.mes, ingreso:ing, costo:cos, ...calc(ing, cos) };
+  });
+
+  const mensMap = {};
+  resumen_cc_mes.forEach(r => {
+    const k = r.ano + '-' + r.mes;
+    if (!mensMap[k]) mensMap[k] = { ano:r.ano, mes:r.mes, ingreso:0, costo:0 };
+    mensMap[k].ingreso += r.ingreso; mensMap[k].costo += r.costo;
+  });
+  const resumen_mensual = Object.values(mensMap).map(r => ({ ...r, ...calc(r.ingreso, r.costo) })).sort((a,b)=>a.ano-b.ano||a.mes-b.mes);
+
+  const anoMap = {};
+  resumen_mensual.forEach(r => {
+    if (!anoMap[r.ano]) anoMap[r.ano] = { ano:r.ano, ingreso:0, costo:0 };
+    anoMap[r.ano].ingreso += r.ingreso; anoMap[r.ano].costo += r.costo;
+  });
+  const resumen_anual = Object.values(anoMap).map(r => ({ ...r, ...calc(r.ingreso, r.costo) })).sort((a,b)=>a.ano-b.ano);
+
+  const grpAnnMap = {};
+  grupoRows.forEach(r => {
+    const k = r.grupo + '-' + r.ano;
+    if (!grpAnnMap[k]) grpAnnMap[k] = { grupo:r.grupo, ano:+r.ano, ingreso:0, costo:0 };
+    grpAnnMap[k].ingreso += +r.ingresos; grpAnnMap[k].costo += +r.costos;
+  });
+  const resumen_linea = Object.values(grpAnnMap).map(r => ({ ...r, ...calc(r.ingreso, r.costo) }));
+
+  DATA = { resumen_anual, resumen_mensual, resumen_linea, resumen_cc, resumen_cc_mes, catalogo };
+  if (resumen_anual.length) state.year = resumen_anual[resumen_anual.length - 1].ano;
+
+  document.getElementById('loading-overlay').style.display = 'none';
+  makeGlobalPills(); makeMonthSelect(); renderGeneral();
 }
 
-function makePills(containerId, currentYear, onClick) {
-  const c = document.getElementById(containerId);
-  c.innerHTML = '';
-  [2024,2025,2026].forEach(y=>{
+function getAvailableYears() { return [...new Set(DATA.resumen_anual.map(r => r.ano))].sort(); }
+function getAvailableMonths(y) { return [...new Set(DATA.resumen_mensual.filter(r => r.ano === y && (r.ingreso !== 0 || r.costo !== 0)).map(r => r.mes))].sort((a,b)=>a-b); }
+
+function getFilteredAnual() {
+  if (state.month === 0) return DATA.resumen_anual.find(r => r.ano === state.year) || {ingreso:0,costo:0,resultado:0,margen:0};
+  return DATA.resumen_mensual.find(r => r.ano === state.year && r.mes === state.month) || {ingreso:0,costo:0,resultado:0,margen:0};
+}
+function getFilteredCC() {
+  if (state.month === 0) return DATA.resumen_cc.filter(r => r.ano === state.year);
+  return DATA.resumen_cc_mes.filter(r => r.ano === state.year && r.mes === state.month);
+}
+function getFilteredLinea() {
+  if (state.month === 0) return DATA.resumen_linea.filter(r => r.ano === state.year);
+  const acc = {};
+  LINEAS_ORDEN.forEach(u => acc[u] = {ingreso:0, costo:0});
+  DATA.resumen_cc_mes.filter(r => r.ano === state.year && r.mes === state.month).forEach(r => {
+    if (acc[r.grupo]) { acc[r.grupo].ingreso += r.ingreso; acc[r.grupo].costo += r.costo; }
+  });
+  return LINEAS_ORDEN.map(u => { const x = acc[u] || {ingreso:0,costo:0}; return { grupo:u, ano:state.year, ingreso:x.ingreso, costo:x.costo, ...calc(x.ingreso, x.costo) }; });
+}
+
+function periodoLabel() { return state.month === 0 ? yLabel(state.year) : MESES[state.month] + ' ' + state.year; }
+
+function makeGlobalPills() {
+  const c = document.getElementById('year-pills-global'); c.innerHTML = '';
+  getAvailableYears().forEach(y => {
     const b = document.createElement('button');
-    b.className = 'pill px-4 py-1.5 rounded-full text-xs font-semibold ' + (y===currentYear?'active':'bg-gray-100 text-gray-500');
+    b.className = 'pill px-4 py-1.5 rounded-full text-xs font-semibold ' + (y === state.year ? 'active' : 'bg-gray-100 text-gray-500');
     b.textContent = yLabel(y);
-    b.addEventListener('click', ()=>onClick(y));
+    b.addEventListener('click', () => { state.year = y; state.month = 0; makeGlobalPills(); makeMonthSelect(); rerender(); });
     c.appendChild(b);
   });
+}
+function makeMonthSelect() {
+  const sel = document.getElementById('month-select-global');
+  const meses = getAvailableMonths(state.year);
+  let opts = '<option value="0">Todo el año</option>';
+  meses.forEach(m => { opts += '<option value="' + m + '"' + (m === state.month ? ' selected' : '') + '>' + MESES[m] + '</option>'; });
+  sel.innerHTML = opts; sel.value = state.month;
+  sel.onchange = () => { state.month = +sel.value; rerender(); };
+}
+function rerender() { const t = document.querySelector('[data-tab].visible')?.dataset.tab || 'general'; switchTab(t); }
+
+function switchTab(id) {
+  document.querySelectorAll('[data-tab]').forEach(el => el.classList.remove('visible'));
+  document.querySelector('[data-tab="' + id + '"]').classList.add('visible');
+  document.querySelectorAll('#tabs .tab-btn').forEach(b => {
+    if (b.dataset.tabid === id) { b.classList.add('active'); b.classList.remove('text-orange-200/50'); }
+    else { b.classList.remove('active'); b.classList.add('text-orange-200/50'); }
+  });
+  updateBreadcrumb(id);
+  if (id === 'general')  renderGeneral();
+  if (id === 'mensual')  renderMensual();
+  if (id === 'linea')    renderLinea();
+  if (id === 'centro')   renderCentro();
+}
+document.querySelectorAll('#tabs .tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tabid)));
+
+function updateBreadcrumb(tabId) {
+  const map = {general:'General', mensual:'Mensual', linea:'Por Línea', centro:'Por Centro'};
+  let parts = ['<span class="breadcrumb-item">Inicio</span>'];
+  parts.push('<span class="text-gray-300">→</span><span class="breadcrumb-item font-semibold text-gray-600">' + (map[tabId]||tabId) + '</span>');
+  if (tabId === 'linea' && state.selectedLinea) parts.push('<span class="text-gray-300">→</span><span class="font-semibold" style="color:#c2410c">' + state.selectedLinea + '</span>');
+  if (tabId === 'centro' && state.selectedCC) {
+    const m = DATA.catalogo.find(x => x.cod === state.selectedCC);
+    if (m) parts.push('<span class="text-gray-300">→</span><span class="font-semibold" style="color:#c2410c">' + m.nombre + '</span>');
+  }
+  document.getElementById('breadcrumb').innerHTML = parts.join(' ');
 }
 
 // =========== GENERAL ===========
 function renderGeneral() {
   const ra = DATA.resumen_anual;
-  const y = state.year;
-  const subtEl = document.getElementById('ubic-ranking-subtitulo');
-  if(subtEl) subtEl.textContent = periodoLabel();
-
-  // Datos del periodo (año o año+mes)
-  const periodData = getFilteredAnual();
-  const periodCC = getFilteredCC().filter(c=>c.ingreso!==0||c.costo!==0);
-  const rentables = periodCC.filter(c=>c.resultado>0).length;
-  const perdida = periodCC.filter(c=>c.resultado<0).length;
-
+  document.getElementById('ubic-ranking-subtitulo').textContent = periodoLabel() + ' · Click en barra para ver detalle';
+  const pd = getFilteredAnual();
+  const pdCC = getFilteredCC().filter(c => c.ingreso !== 0 || c.costo !== 0);
   document.getElementById('kpis-general').innerHTML =
-    kpiHTML('Ingresos '+periodoLabel(), fM(periodData.ingreso), '38 CC totales · '+periodCC.length+' activos') +
-    kpiHTML('Costos '+periodoLabel(), fM(periodData.costo), 'Operativos directos', true) +
-    kpiHTML('Resultado '+periodoLabel(), fM(periodData.resultado), 'Margen: '+fPct(periodData.margen), periodData.resultado<0) +
-    kpiHTML('CC', String(periodCC.length), rentables+' rentables · '+perdida+' en pérdida');
+    kpiHTML('Ingresos ' + periodoLabel(), fM(pd.ingreso), pdCC.length + ' centros activos') +
+    kpiHTML('Costos ' + periodoLabel(), fM(pd.costo), 'Operativos directos', true) +
+    kpiHTML('Resultado ' + periodoLabel(), fM(pd.resultado), 'Margen: ' + fPct(pd.margen), pd.resultado < 0) +
+    kpiHTML('CC activos', String(pdCC.length), pdCC.filter(c=>c.resultado>0).length + ' rentables · ' + pdCC.filter(c=>c.resultado<0).length + ' en pérdida');
 
   let html = '<thead><tr><th class="py-2 px-3 text-left text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100"></th>';
-  ra.forEach(r=>{html+='<th class="py-2 px-3 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+yLabel(r.ano)+'</th>';});
+  ra.forEach(r => { html += '<th class="py-2 px-3 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">' + yLabel(r.ano) + '</th>'; });
   html += '</tr></thead><tbody>';
-  const rows = [
-    {l:'Ingresos', k:'ingreso', c:'text-orange-700', fmt:fCLP},
-    {l:'Costos operativos', k:'costo', c:'text-red-500', fmt:fCLP},
-    {l:'Resultado', k:'resultado', c:'', fmt:fCLP, dyn:true, bold:true, sep:true},
-    {l:'Margen %', k:'margen', c:'', fmt:fPct, dyn:true, bold:true},
-  ];
-  rows.forEach(r=>{
-    html += '<tr class="border-b border-gray-50 ' + (r.sep?'border-t-2 border-t-gray-200':'') + '">';
-    html += '<td class="py-2 px-3 text-sm ' + (r.bold?'font-bold':'font-medium') + ' text-gray-700">' + r.l + '</td>';
-    ra.forEach(rec=>{
+  [{l:'Ingresos',k:'ingreso',c:'text-blue-700',fmt:fCLP,dl:'ingresos'},{l:'Costos operativos',k:'costo',c:'text-red-500',fmt:fCLP,dl:'costos'},{l:'Resultado',k:'resultado',c:'',fmt:fCLP,dyn:true,bold:true,sep:true},{l:'Margen %',k:'margen',c:'',fmt:fPct,dyn:true,bold:true}].forEach(r => {
+    html += '<tr class="border-b border-gray-50' + (r.sep?' border-t-2 border-t-gray-200':'') + '">';
+    html += '<td class="py-2 px-3 text-sm ' + (r.bold?'font-bold':'font-medium') + ' text-gray-700">' + r.l + (r.dl?' <span class="dl-icon">📥</span>':'') + '</td>';
+    ra.forEach(rec => {
       const v = rec[r.k];
-      const color = r.dyn?(v>=0?'text-emerald-600':'text-red-500'):(r.c||'text-gray-700');
-      html += '<td class="py-2 px-3 text-right ' + (r.bold?'font-bold':'font-medium') + ' ' + color + '" style="font-variant-numeric:tabular-nums">' + r.fmt(v) + '</td>';
+      const color = r.dyn ? (v >= 0 ? 'text-emerald-600' : 'text-red-500') : (r.c || 'text-gray-700');
+      if (r.dl) {
+        html += '<td class="py-2 px-3 text-right font-medium ' + color + ' dl-cell" title="Descargar CSV · ' + r.l + ' ' + rec.ano + '" onclick="dlClick(\'' + r.dl + '\',' + rec.ano + ',0,null,null)">' + r.fmt(v) + '</td>';
+      } else {
+        html += '<td class="py-2 px-3 text-right ' + (r.bold?'font-bold':'font-medium') + ' ' + color + '" style="font-variant-numeric:tabular-nums">' + r.fmt(v) + '</td>';
+      }
     });
     html += '</tr>';
   });
-  html += '</tbody>';
-  document.getElementById('tabla-anual').innerHTML = html;
+  document.getElementById('tabla-anual').innerHTML = html + '</tbody>';
 
-  if(charts.anual) charts.anual.destroy();
+  if (charts.anual) charts.anual.destroy();
   charts.anual = new Chart(document.getElementById('chart-anual'), {
     type:'bar',
     data:{labels:ra.map(r=>yLabel(r.ano)),datasets:[
-      {label:'Ingresos',data:ra.map(r=>r.ingreso),backgroundColor:'#c2410c',borderRadius:6},
+      {label:'Ingresos',data:ra.map(r=>r.ingreso),backgroundColor:PRIMARY,borderRadius:6},
       {label:'Costos',data:ra.map(r=>r.costo),backgroundColor:'#EF4444',borderRadius:6},
       {label:'Resultado',data:ra.map(r=>r.resultado),type:'line',borderColor:'#F59E0B',backgroundColor:'#F59E0B',pointRadius:6,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
     ]},
     options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false},ticks:{font:{size:12,weight:600}}}}}
   });
 
-  if(charts.margen) charts.margen.destroy();
+  if (charts.margen) charts.margen.destroy();
   charts.margen = new Chart(document.getElementById('chart-margen'), {
     type:'bar',
     data:{labels:ra.map(r=>yLabel(r.ano)),datasets:[{label:'Margen %',data:ra.map(r=>r.margen),backgroundColor:ra.map(r=>r.margen>=0?'#10B981':'#EF4444'),borderRadius:6}]},
     options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>fPct(ctx.raw)}},legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
   });
 
-  if(charts.cat) charts.cat.destroy();
-  const ubicTotals = {};
-  CATEGORIAS_ORDEN.forEach(u=>ubicTotals[u]={ing:0,costo:0,res:0});
-  getFilteredCategoria().forEach(r=>{
-    if(ubicTotals[r.categoria]){
-      ubicTotals[r.categoria].ing += r.ingreso;
-      ubicTotals[r.categoria].costo += r.costo;
-      ubicTotals[r.categoria].res += r.resultado;
-    }
-  });
-  const labelsU = CATEGORIAS_ORDEN.filter(u=>ubicTotals[u].ing!==0||ubicTotals[u].costo!==0);
-  charts.cat = new Chart(document.getElementById('chart-categorias'), {
+  if (charts.lineas) charts.lineas.destroy();
+  const lineaTotals = {};
+  LINEAS_ORDEN.forEach(u => lineaTotals[u] = {ing:0,costo:0,res:0});
+  getFilteredLinea().forEach(r => { if (lineaTotals[r.grupo]) { lineaTotals[r.grupo].ing += r.ingreso; lineaTotals[r.grupo].costo += r.costo; lineaTotals[r.grupo].res += r.resultado; } });
+  const labelsL = LINEAS_ORDEN.filter(u => lineaTotals[u] && (lineaTotals[u].ing !== 0 || lineaTotals[u].costo !== 0));
+  charts.lineas = new Chart(document.getElementById('chart-lineas'), {
     type:'bar',
-    data:{labels:labelsU,datasets:[
-      {label:'Ingresos',data:labelsU.map(u=>ubicTotals[u].ing),backgroundColor:'#c2410c',borderRadius:4},
-      {label:'Costos',data:labelsU.map(u=>ubicTotals[u].costo),backgroundColor:'#EF4444',borderRadius:4},
-      {label:'Resultado',data:labelsU.map(u=>ubicTotals[u].res),type:'line',borderColor:'#F59E0B',pointRadius:6,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
+    data:{labels:labelsL,datasets:[
+      {label:'Ingresos',data:labelsL.map(u=>lineaTotals[u].ing),backgroundColor:PRIMARY,borderRadius:4},
+      {label:'Costos',data:labelsL.map(u=>lineaTotals[u].costo),backgroundColor:'#EF4444',borderRadius:4},
+      {label:'Resultado',data:labelsL.map(u=>lineaTotals[u].res),type:'line',borderColor:'#F59E0B',pointRadius:6,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
     ]},
-    options:{responsive:true,
-      onClick:(e,els)=>{ if(els.length){ state.selectedCategoria = labelsU[els[0].index]; switchTab('categoria'); }},
-      plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false},ticks:{font:{size:11,weight:600}}}}}
+    options:{responsive:true,onClick:(e,els)=>{ if(els.length){ state.selectedLinea=labelsL[els[0].index]; switchTab('linea'); }},plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false},ticks:{font:{size:11,weight:600}}}}}
   });
 }
 
 // =========== MENSUAL ===========
 function renderMensual() {
   const y = state.year;
-  const meses = DATA.resumen_mensual.filter(r=>r.ano===y).sort((a,b)=>a.mes-b.mes);
+  const meses = DATA.resumen_mensual.filter(r => r.ano === y).sort((a,b) => a.mes - b.mes);
   document.getElementById('mensual-subtitulo').textContent = yLabel(y) + ' · ' + meses.length + ' meses con datos';
-
-  const total_ing = meses.reduce((s,r)=>s+r.ingreso,0);
-  const total_costo = meses.reduce((s,r)=>s+r.costo,0);
-  const total_res = total_ing - total_costo;
-  const margen = total_ing>0?(total_res/total_ing*100):0;
-  const mejor_mes = meses.length ? meses.reduce((a,b)=>a.resultado>b.resultado?a:b) : null;
-
+  const ti = meses.reduce((s,r)=>s+r.ingreso,0), tc = meses.reduce((s,r)=>s+r.costo,0);
+  const tr = ti - tc, tm = ti > 0 ? tr/ti*100 : 0;
+  const mejor = meses.length ? meses.reduce((a,b)=>a.resultado>b.resultado?a:b) : null;
   document.getElementById('kpis-mensual').innerHTML =
-    kpiHTML('Ingresos '+yLabel(y), fM(total_ing), meses.length+' meses') +
-    kpiHTML('Costos '+yLabel(y), fM(total_costo), '', true) +
-    kpiHTML('Resultado '+yLabel(y), fM(total_res), 'Margen: '+fPct(margen), total_res<0) +
-    kpiHTML('Mejor mes', mejor_mes?MESES[mejor_mes.mes]:'-', mejor_mes?fM(mejor_mes.resultado):'');
+    kpiHTML('Ingresos ' + yLabel(y), fM(ti), meses.length + ' meses') +
+    kpiHTML('Costos ' + yLabel(y), fM(tc), '', true) +
+    kpiHTML('Resultado ' + yLabel(y), fM(tr), 'Margen: ' + fPct(tm), tr < 0) +
+    kpiHTML('Mejor mes', mejor ? MESES[mejor.mes] : '-', mejor ? fM(mejor.resultado) : '');
 
-  if(charts.mensual) charts.mensual.destroy();
-  const labels = meses.map(r=>MESES[r.mes]);
+  const labels = meses.map(r => MESES[r.mes]);
+  if (charts.mensual) charts.mensual.destroy();
   charts.mensual = new Chart(document.getElementById('chart-mensual'), {
     type:'bar',
-    data:{labels:labels,datasets:[
-      {label:'Ingresos',data:meses.map(r=>r.ingreso),backgroundColor:'#c2410c',borderRadius:6},
+    data:{labels,datasets:[
+      {label:'Ingresos',data:meses.map(r=>r.ingreso),backgroundColor:PRIMARY,borderRadius:6},
       {label:'Costos',data:meses.map(r=>r.costo),backgroundColor:'#EF4444',borderRadius:6},
       {label:'Resultado',data:meses.map(r=>r.resultado),type:'line',borderColor:'#F59E0B',pointRadius:5,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
     ]},
     options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
   });
-
-  if(charts.margenMensual) charts.margenMensual.destroy();
+  if (charts.margenMensual) charts.margenMensual.destroy();
   charts.margenMensual = new Chart(document.getElementById('chart-margen-mensual'), {
     type:'line',
-    data:{labels:labels,datasets:[{label:'Margen %',data:meses.map(r=>r.margen),borderColor:'#c2410c',backgroundColor:'rgba(194,65,12,0.1)',pointRadius:5,pointBackgroundColor:'#c2410c',borderWidth:3,fill:true,tension:0.3}]},
+    data:{labels,datasets:[{label:'Margen %',data:meses.map(r=>r.margen),borderColor:PRIMARY,backgroundColor:'rgba(194,65,12,0.1)',pointRadius:5,pointBackgroundColor:PRIMARY,borderWidth:3,fill:true,tension:0.3}]},
     options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>fPct(ctx.raw)}},legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
   });
 
-  let html = '<thead><tr><th class="py-2 px-2 text-left text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Mes</th><th class="py-2 px-2 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Ing.</th><th class="py-2 px-2 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Costo</th><th class="py-2 px-2 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Result.</th><th class="py-2 px-2 text-right text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Margen</th></tr></thead><tbody>';
-  meses.forEach(r=>{
-    html += '<tr class="border-b border-gray-50">' +
+  let th = '<thead><tr>' + ['Mes','Ingresos','Costos','Resultado','Margen'].map(h=>'<th class="py-2 px-2 text-left text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>').join('') + '</tr></thead><tbody>';
+  meses.forEach(r => {
+    th += '<tr class="border-b border-gray-50">' +
       '<td class="py-2 px-2 font-semibold text-gray-700">' + MESES[r.mes] + '</td>' +
-      '<td class="py-2 px-2 text-right text-gray-700" style="font-variant-numeric:tabular-nums">' + fM(r.ingreso) + '</td>' +
-      '<td class="py-2 px-2 text-right text-gray-500" style="font-variant-numeric:tabular-nums">' + fM(r.costo) + '</td>' +
+      '<td class="py-2 px-2 text-right dl-cell" title="Descargar CSV ingresos · ' + MESES[r.mes] + ' ' + y + '" onclick="dlClick(\'ingresos\',' + y + ',' + r.mes + ',null,null)">' + fM(r.ingreso) + '</td>' +
+      '<td class="py-2 px-2 text-right text-gray-500 dl-cell" title="Descargar CSV costos · ' + MESES[r.mes] + ' ' + y + '" onclick="dlClick(\'costos\',' + y + ',' + r.mes + ',null,null)">' + fM(r.costo) + '</td>' +
       '<td class="py-2 px-2 text-right font-bold ' + (r.resultado>=0?'text-emerald-600':'text-red-500') + '" style="font-variant-numeric:tabular-nums">' + fM(r.resultado) + '</td>' +
-      '<td class="py-2 px-2 text-right"><span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (r.margen>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">' + fPct(r.margen) + '</span></td>' +
+      '<td class="py-2 px-2 text-right"><span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (r.resultado>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">' + (r.ingreso>0?fPct(r.margen):'-') + '</span></td>' +
       '</tr>';
   });
-  html += '</tbody>';
-  document.getElementById('tabla-mensual').innerHTML = html;
+  document.getElementById('tabla-mensual').innerHTML = th + '</tbody>';
 }
 
-// =========== POR CATEGORÍA ===========
-function renderCategoria() {
+// =========== POR LÍNEA ===========
+function renderLinea() {
+  updateBreadcrumb('linea');
+  const ubics = getFilteredLinea().filter(r => r.ingreso !== 0 || r.costo !== 0);
 
-  const sel = document.getElementById('categoria-select');
-  if(sel.options.length === 0){
-    sel.innerHTML = '<option value="">-- Ver todas las categorías --</option>';
-    CATEGORIAS_ORDEN.forEach(u=>{ sel.innerHTML += '<option value="' + u + '">' + u + '</option>'; });
-    sel.addEventListener('change', ()=>{ state.selectedCategoria = sel.value; renderCategoria(); });
-  }
-  sel.value = state.selectedCategoria;
-
-  const y = state.year;
-  const ubics = getFilteredCategoria();
-
-  if(!state.selectedCategoria) {
-    document.getElementById('categoria-detail').innerHTML = '';
+  if (!state.selectedLinea) {
+    document.getElementById('linea-detail').innerHTML = '';
     let html = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">';
-    CATEGORIAS_ORDEN.forEach(u=>{
-      const r = ubics.find(x=>x.categoria===u);
-      if(!r || (r.ingreso===0 && r.costo===0)) return;
-      const color = r.resultado>=0?'emerald':'red';
-      const nCC = DATA.catalogo.filter(c=>c.categoria===u).length;
-      html += '<div class="card level-card" data-cat="' + u + '">' +
-        '<div class="p-5">' +
-        '<div class="flex items-center justify-between mb-3">' +
-        '<span class="text-xs font-bold uppercase tracking-wider" style="color:' + CAT_COLOR[u] + '">📦 ' + u + '</span>' +
-        '<span class="text-xs text-gray-400">' + nCC + ' cuarteles</span>' +
-        '</div>' +
-        '<p class="text-2xl font-extrabold ' + (r.resultado>=0?'text-emerald-600':'text-red-500') + '" style="font-variant-numeric:tabular-nums">' + fM(r.resultado) + '</p>' +
+    ubics.sort((a,b)=>b.ingreso-a.ingreso).forEach(r => {
+      const hexColor = LINEA_COLOR[r.grupo] || DEFAULT_COLOR;
+      html += '<div class="level-card card p-5" data-linea="' + r.grupo + '">' +
+        '<div class="flex items-center gap-3 mb-3"><div class="w-3 h-3 rounded-full" style="background:' + hexColor + '"></div>' +
+        '<h3 class="text-sm font-bold text-gray-800 truncate">' + r.grupo + '</h3></div>' +
         '<div class="mt-3 grid grid-cols-2 gap-2 text-xs">' +
         '<div><p class="text-gray-400 font-semibold">Ingreso</p><p class="font-bold text-gray-700">' + fM(r.ingreso) + '</p></div>' +
         '<div><p class="text-gray-400 font-semibold">Costo</p><p class="font-bold text-gray-700">' + fM(r.costo) + '</p></div>' +
-        '</div>' +
-        '<div class="mt-3 pt-3 border-t border-gray-100">' +
-        '<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-' + color + '-50 text-' + color + '-600">Margen ' + fPct(r.margen) + '</span>' +
-        '<span class="ml-2 text-xs text-gray-400">Click para ver CC →</span>' +
-        '</div>' +
+        '</div><div class="mt-3 pt-3 border-t border-gray-100">' +
+        '<span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (r.resultado>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">Margen ' + fPct(r.margen) + '</span>' +
+        '<span class="ml-2 text-xs text-gray-400">Click para centros →</span>' +
         '</div></div>';
     });
     html += '</div>';
-    document.getElementById('categoria-summary').innerHTML = html;
-    document.querySelectorAll('#categoria-summary .level-card').forEach(card=>{
-      card.addEventListener('click', ()=>{
-        state.selectedCategoria = card.dataset.cat;
-        renderCategoria();
-      });
+    document.getElementById('linea-summary').innerHTML = html;
+    document.querySelectorAll('#linea-summary .level-card').forEach(card => {
+      card.addEventListener('click', () => { state.selectedLinea = card.dataset.linea; renderLinea(); });
     });
   } else {
-    const u = state.selectedCategoria;
-    const r = ubics.find(x=>x.categoria===u) || {ingreso:0,costo:0,resultado:0,margen:0};
-    const cc_ubic = getFilteredCC().filter(x=>x.categoria===u);
-    const cc_activas = cc_ubic.filter(c=>c.ingreso!==0||c.costo!==0).sort((a,b)=>b.resultado-a.resultado);
+    document.getElementById('linea-summary').innerHTML = '';
+    const u = state.selectedLinea;
+    const r = ubics.find(x => x.grupo === u) || {ingreso:0,costo:0,resultado:0,margen:0};
+    const cc_ubic = getFilteredCC().filter(x => x.grupo === u && (x.ingreso !== 0 || x.costo !== 0)).sort((a,b) => b.resultado - a.resultado);
+    const hexColor = LINEA_COLOR[u] || DEFAULT_COLOR;
 
     let html = '<div class="card"><div class="p-5">' +
       '<div class="flex items-center justify-between mb-4">' +
-      '<div>' +
-      '<h2 class="text-base font-bold text-gray-800">📦 Categoría: <span style="color:' + CAT_COLOR[u] + '">' + u + '</span></h2>' +
-      '<p class="text-xs text-gray-400">' + periodoLabel() + ' · ' + cc_activas.length + ' CC con actividad</p>' +
-      '</div>' +
-      '<button id="btn-cerrar-cat" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>' +
+      '<div><h2 class="text-base font-bold text-gray-800">Línea: <span style="color:' + hexColor + '">' + u + '</span></h2>' +
+      '<p class="text-xs text-gray-400">' + periodoLabel() + ' · ' + cc_ubic.length + ' centros con actividad</p></div>' +
+      '<button id="btn-cerrar-linea" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>' +
       '</div>' +
       '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' +
-      '<div class="bg-orange-50 rounded-xl p-3 text-center"><p class="text-xs text-orange-400 font-semibold mb-1">Ingreso</p><p class="text-lg font-extrabold text-orange-700">' + fM(r.ingreso) + '</p></div>' +
-      '<div class="bg-red-50 rounded-xl p-3 text-center"><p class="text-xs text-red-400 font-semibold mb-1">Costo</p><p class="text-lg font-extrabold text-red-600">' + fM(r.costo) + '</p></div>' +
+      '<div class="bg-blue-50 rounded-xl p-3 text-center dl-cell" title="Descargar CSV ingresos · ' + u + '" onclick="dlClick(\'ingresos\',state.year,state.month,\'' + u + '\',null)"><p class="text-xs text-blue-400 font-semibold mb-1">Ingreso <span class="dl-icon">📥</span></p><p class="text-lg font-extrabold text-blue-700">' + fM(r.ingreso) + '</p></div>' +
+      '<div class="bg-red-50 rounded-xl p-3 text-center dl-cell" title="Descargar CSV costos · ' + u + '" onclick="dlClick(\'costos\',state.year,state.month,\'' + u + '\',null)"><p class="text-xs text-red-400 font-semibold mb-1">Costo <span class="dl-icon">📥</span></p><p class="text-lg font-extrabold text-red-600">' + fM(r.costo) + '</p></div>' +
       '<div class="bg-' + (r.resultado>=0?'emerald':'red') + '-50 rounded-xl p-3 text-center"><p class="text-xs text-' + (r.resultado>=0?'emerald':'red') + '-400 font-semibold mb-1">Resultado</p><p class="text-lg font-extrabold text-' + (r.resultado>=0?'emerald':'red') + '-700">' + fM(r.resultado) + '</p></div>' +
       '<div class="bg-amber-50 rounded-xl p-3 text-center"><p class="text-xs text-amber-500 font-semibold mb-1">Margen</p><p class="text-lg font-extrabold text-amber-700">' + fPct(r.margen) + '</p></div>' +
-      '</div>' +
-      '</div></div>';
+      '</div></div></div>';
 
-    html += '<div class="card mt-6"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">CC · click para detalle</h3>';
-    html += '<table class="w-full text-xs"><thead><tr>';
-    ['Cód','Centro de Costo','Ingreso','Costo','Resultado','Margen'].forEach(h=>{html+='<th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>';});
-    html += '</tr></thead><tbody>';
-    cc_activas.forEach(c=>{
-      const meta = DATA.catalogo.find(x=>x.cod===c.cod) || {};
+    html += '<div class="card mt-6"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Centros de costo · click para detalle</h3>';
+    html += '<table class="w-full text-xs"><thead><tr>' + ['Cód','Centro','Ingreso','Costo','Resultado','Margen'].map(h=>'<th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>').join('') + '</tr></thead><tbody>';
+    cc_ubic.forEach(c => {
       html += '<tr class="border-b border-gray-50 row-hover" data-cod="' + c.cod + '">' +
         '<td class="py-2 px-2 font-bold text-gray-700">' + c.cod + '</td>' +
-        '<td class="py-2 px-2 text-gray-700">' + c.nombre + '</td>' +
-        '<td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">' + fM(c.ingreso) + '</td>' +
-        '<td class="py-2 px-2 text-right text-gray-500" style="font-variant-numeric:tabular-nums">' + fM(c.costo) + '</td>' +
-        '<td class="py-2 px-2 text-right font-bold ' + (c.resultado>=0?'text-emerald-600':'text-red-500') + '" style="font-variant-numeric:tabular-nums">' + fM(c.resultado) + '</td>' +
+        '<td class="py-2 px-2 text-gray-700 max-w-xs truncate">' + c.nombre + '</td>' +
+        '<td class="py-2 px-2 text-right">' + fM(c.ingreso) + '</td>' +
+        '<td class="py-2 px-2 text-right text-gray-500">' + fM(c.costo) + '</td>' +
+        '<td class="py-2 px-2 text-right font-bold ' + (c.resultado>=0?'text-emerald-600':'text-red-500') + '">' + fM(c.resultado) + '</td>' +
         '<td class="py-2 px-2 text-right"><span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (c.resultado>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">' + (c.ingreso>0?fPct(c.margen):'S/I') + '</span></td>' +
         '</tr>';
     });
     html += '</tbody></table></div></div>';
 
-    if(cc_activas.length > 0){
-      html += '<div class="card mt-6"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Resultado por CC · '+u+' · '+yLabel(y)+'</h3><canvas id="chart-cat-detalle" height="180"></canvas></div></div>';
+    if (cc_ubic.length > 0) {
+      html += '<div class="card mt-6"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Resultado por centro · ' + u + ' · ' + periodoLabel() + '</h3><canvas id="chart-linea-detalle" height="180"></canvas></div></div>';
     }
-
-    document.getElementById('categoria-summary').innerHTML = '';
-    document.getElementById('categoria-detail').innerHTML = html;
-
-    document.getElementById('btn-cerrar-cat').addEventListener('click', ()=>{
-      state.selectedCategoria = '';
-      renderCategoria();
+    document.getElementById('linea-detail').innerHTML = html;
+    document.getElementById('btn-cerrar-linea').addEventListener('click', () => { state.selectedLinea = ''; renderLinea(); });
+    document.querySelectorAll('#linea-detail tbody tr[data-cod]').forEach(tr => {
+      tr.addEventListener('click', () => { state.selectedCC = tr.dataset.cod; switchTab('centro'); });
     });
-    document.querySelectorAll('#categoria-detail tbody tr[data-cod]').forEach(tr=>{
-      tr.addEventListener('click', ()=>{
-        state.selectedCC = tr.dataset.cod;
-        switchTab('cc');
-      });
-    });
-
-    if(cc_activas.length > 0){
-      if(charts.catDetalle) charts.catDetalle.destroy();
-      const top = cc_activas.slice(0, 25);
-      charts.catDetalle = new Chart(document.getElementById('chart-cat-detalle'),{
+    if (cc_ubic.length > 0) {
+      if (charts.lineaDetalle) charts.lineaDetalle.destroy();
+      const top = cc_ubic.slice(0, 20);
+      charts.lineaDetalle = new Chart(document.getElementById('chart-linea-detalle'), {
         type:'bar',
-        data:{labels:top.map(c=>c.nombre.substring(0,45)),datasets:[{label:'Resultado',data:top.map(c=>c.resultado),backgroundColor:top.map(c=>c.resultado>=0?'#10B981':'#EF4444'),borderRadius:6}]},
+        data:{labels:top.map(c=>c.nombre.substring(0,40)),datasets:[{label:'Resultado',data:top.map(c=>c.resultado),backgroundColor:top.map(c=>c.resultado>=0?'#10B981':'#EF4444'),borderRadius:6}]},
         options:{indexAxis:'y',responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>fM(ctx.raw)}},legend:{display:false}},scales:{x:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},y:{ticks:{font:{size:9,weight:500}},grid:{display:false}}}}
       });
     }
   }
 }
 
-// =========== POR CC ===========
-function renderCC() {
-
-  const sel = document.getElementById('cc-select');
-  if(sel.options.length === 0){
-    sel.innerHTML = '<option value="">-- Ver todos los CC --</option>';
-    CATEGORIAS_ORDEN.forEach(u=>{
-      const opts = DATA.catalogo.filter(o=>o.categoria===u);
-      if(opts.length===0) return;
+// =========== POR CENTRO ===========
+function renderCentro() {
+  const sel = document.getElementById('centro-select');
+  if (sel.options.length === 0) {
+    sel.innerHTML = '<option value="">-- Ver todos los centros --</option>';
+    LINEAS_ORDEN.forEach(u => {
+      const opts = DATA.catalogo.filter(o => o.grupo === u);
+      if (!opts.length) return;
       sel.innerHTML += '<optgroup label="' + u + '">';
-      opts.forEach(o=>{ sel.innerHTML += '<option value="' + o.cod + '">[' + o.cod + '] ' + o.nombre + '</option>'; });
+      opts.forEach(o => { sel.innerHTML += '<option value="' + o.cod + '">[' + o.cod + '] ' + o.nombre + '</option>'; });
       sel.innerHTML += '</optgroup>';
     });
-    sel.addEventListener('change', ()=>{ state.selectedCC = sel.value; renderCC(); });
+    sel.addEventListener('change', () => { state.selectedCC = sel.value; renderCentro(); });
   }
   sel.value = state.selectedCC;
+  hideMov(); updateBreadcrumb('centro');
+  const y = state.year, cc_all = getFilteredCC();
 
-  const y = state.year;
-  const cc_all = getFilteredCC();
-
-  if(!state.selectedCC) {
-    const activas = cc_all.filter(c=>c.ingreso!==0||c.costo!==0).sort((a,b)=>b.resultado-a.resultado);
-    let html = '<div class="card"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Todos los CC con actividad · '+periodoLabel()+' ('+activas.length+' activos)</h3>';
-    html += '<table class="w-full text-xs"><thead><tr>';
-    ['Cód','Categoría','Centro de Costo','Ingreso','Costo','Resultado','Margen'].forEach(h=>{html+='<th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>';});
-    html += '</tr></thead><tbody>';
-    activas.forEach(c=>{
+  if (!state.selectedCC) {
+    const activas = cc_all.filter(c => c.ingreso !== 0 || c.costo !== 0).sort((a,b) => b.resultado - a.resultado);
+    let html = '<div class="card"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Todos los centros con actividad · ' + periodoLabel() + ' (' + activas.length + ' activos)</h3>';
+    html += '<table class="w-full text-xs"><thead><tr>' + ['Cód','Línea','Centro','Ingreso','Costo','Resultado','Margen'].map(h=>'<th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">'+h+'</th>').join('') + '</tr></thead><tbody>';
+    activas.forEach(c => {
+      const gc = LINEA_COLOR[c.grupo] || DEFAULT_COLOR;
       html += '<tr class="border-b border-gray-50 row-hover" data-cod="' + c.cod + '">' +
         '<td class="py-2 px-2 font-bold text-gray-700">' + c.cod + '</td>' +
-        '<td class="py-2 px-2"><span class="px-2 py-0.5 rounded text-xs font-semibold" style="background:' + CAT_COLOR[c.categoria] + '20;color:' + CAT_COLOR[c.categoria] + '">' + c.categoria + '</span></td>' +
-        '<td class="py-2 px-2 text-gray-700">' + c.nombre + '</td>' +
-        '<td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">' + fM(c.ingreso) + '</td>' +
-        '<td class="py-2 px-2 text-right text-gray-500" style="font-variant-numeric:tabular-nums">' + fM(c.costo) + '</td>' +
-        '<td class="py-2 px-2 text-right font-bold ' + (c.resultado>=0?'text-emerald-600':'text-red-500') + '" style="font-variant-numeric:tabular-nums">' + fM(c.resultado) + '</td>' +
+        '<td class="py-2 px-2"><span class="px-2 py-0.5 rounded text-xs font-semibold" style="background:' + gc + '20;color:' + gc + '">' + c.grupo + '</span></td>' +
+        '<td class="py-2 px-2 text-gray-700 max-w-xs truncate">' + c.nombre + '</td>' +
+        '<td class="py-2 px-2 text-right">' + fM(c.ingreso) + '</td>' +
+        '<td class="py-2 px-2 text-right text-gray-500">' + fM(c.costo) + '</td>' +
+        '<td class="py-2 px-2 text-right font-bold ' + (c.resultado>=0?'text-emerald-600':'text-red-500') + '">' + fM(c.resultado) + '</td>' +
         '<td class="py-2 px-2 text-right"><span class="px-2 py-0.5 rounded-full text-xs font-bold ' + (c.resultado>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-500') + '">' + (c.ingreso>0?fPct(c.margen):'S/I') + '</span></td>' +
         '</tr>';
     });
     html += '</tbody></table></div></div>';
-    document.getElementById('cc-content').innerHTML = html;
-    document.querySelectorAll('#cc-content tbody tr[data-cod]').forEach(tr=>{
-      tr.addEventListener('click', ()=>{
-        state.selectedCC = tr.dataset.cod;
-        renderCC();
-      });
+    document.getElementById('centro-content').innerHTML = html;
+    document.querySelectorAll('#centro-content tbody tr[data-cod]').forEach(tr => {
+      tr.addEventListener('click', () => { state.selectedCC = tr.dataset.cod; renderCentro(); });
     });
     return;
   }
 
-  const cFiltered = cc_all.find(x=>x.cod===state.selectedCC);
-  // Si no hay datos en el periodo filtrado, mostrar ceros
-  const c = cFiltered || {cod:state.selectedCC, ingreso:0, costo:0, resultado:0, margen:0};
-  const meta = DATA.catalogo.find(x=>x.cod===state.selectedCC);
-  if(!c || !meta){ document.getElementById('cc-content').innerHTML='<div class="card p-8 text-center text-gray-400">No encontrado</div>'; return; }
+  const c = cc_all.find(x => x.cod === state.selectedCC) || {cod:state.selectedCC, ingreso:0, costo:0, resultado:0, margen:0};
+  const meta = DATA.catalogo.find(x => x.cod === state.selectedCC);
+  if (!meta) { document.getElementById('centro-content').innerHTML = '<div class="card p-8 text-center text-gray-400">No encontrado</div>'; return; }
 
-  const histo = DATA.resumen_cc.filter(x=>x.cod===state.selectedCC).sort((a,b)=>a.ano-b.ano);
-  const meses_cc = DATA.resumen_cc_mes.filter(x=>x.cod===state.selectedCC && x.ano===y).sort((a,b)=>a.mes-b.mes);
-  const costos_d = DATA.costos_detalle.filter(x=>x.cod===state.selectedCC && x.ano===y).sort((a,b)=>b.monto-a.monto);
+  const histo = DATA.resumen_cc.filter(x => x.cod === state.selectedCC).sort((a,b) => a.ano - b.ano);
+  const meses_cc = DATA.resumen_cc_mes.filter(x => x.cod === state.selectedCC && x.ano === y).sort((a,b) => a.mes - b.mes);
+  const gc = LINEA_COLOR[meta.grupo] || DEFAULT_COLOR;
 
   let html = '<div class="card"><div class="p-5">' +
     '<div class="flex items-center justify-between mb-4">' +
-    '<div>' +
-    '<h2 class="text-base font-bold text-gray-800">[' + meta.cod + '] ' + meta.nombre + '</h2>' +
-    '<p class="text-xs text-gray-400"><span class="font-semibold" style="color:' + CAT_COLOR[meta.categoria] + '">📦 ' + meta.categoria + '</span>' + ' · ' + periodoLabel() + '</p>' +
-    '</div>' +
+    '<div><h2 class="text-base font-bold text-gray-800">[' + meta.cod + '] ' + meta.nombre + '</h2>' +
+    '<p class="text-xs text-gray-400"><span class="font-semibold" style="color:' + gc + '">📦 ' + meta.grupo + '</span> · ' + periodoLabel() + '</p></div>' +
     '<button id="btn-cerrar-cc" class="text-gray-400 hover:text-gray-600 text-lg">✕</button>' +
     '</div>' +
     '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">' +
-    '<div class="bg-orange-50 rounded-xl p-3 text-center"><p class="text-xs text-orange-400 font-semibold mb-1">Ingreso</p><p class="text-lg font-extrabold text-orange-700">' + fM(c.ingreso) + '</p></div>' +
+    '<div class="bg-blue-50 rounded-xl p-3 text-center"><p class="text-xs text-blue-400 font-semibold mb-1">Ingreso</p><p class="text-lg font-extrabold text-blue-700">' + fM(c.ingreso) + '</p></div>' +
     '<div class="bg-red-50 rounded-xl p-3 text-center"><p class="text-xs text-red-400 font-semibold mb-1">Costo</p><p class="text-lg font-extrabold text-red-600">' + fM(c.costo) + '</p></div>' +
     '<div class="bg-' + (c.resultado>=0?'emerald':'red') + '-50 rounded-xl p-3 text-center"><p class="text-xs text-' + (c.resultado>=0?'emerald':'red') + '-400 font-semibold mb-1">Resultado</p><p class="text-lg font-extrabold text-' + (c.resultado>=0?'emerald':'red') + '-700">' + fM(c.resultado) + '</p></div>' +
     '<div class="bg-amber-50 rounded-xl p-3 text-center"><p class="text-xs text-amber-500 font-semibold mb-1">Margen</p><p class="text-lg font-extrabold text-amber-700">' + (c.ingreso>0?fPct(c.margen):'S/I') + '</p></div>' +
+    '</div>' +
+    '<div class="mt-4 flex justify-end gap-2 flex-wrap">' +
+    '<button id="btn-ver-mov" class="flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-bold rounded-xl border border-orange-200 transition-all">📄 Ver movimientos</button>' +
+    '<button onclick="dlClick(\'ingresos\',state.year,state.month,null,\'' + meta.cod + '\')" class="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-all">📥 Ingresos CSV</button>' +
+    '<button onclick="dlClick(\'costos\',state.year,state.month,null,\'' + meta.cod + '\')" class="flex items-center gap-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition-all">📥 Costos CSV</button>' +
     '</div></div></div>';
 
   html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">';
-  html += '<div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Evolución 2024-2026</h3><canvas id="chart-cc-hist"></canvas></div></div>';
-  html += '<div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Detalle mensual '+yLabel(y)+'</h3><canvas id="chart-cc-mes"></canvas></div></div>';
+  html += '<div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Evolución histórica</h3><canvas id="chart-cc-hist"></canvas></div></div>';
+  if (meses_cc.length > 0) html += '<div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Mensual ' + yLabel(y) + '</h3><canvas id="chart-cc-mes"></canvas></div></div>';
   html += '</div>';
 
-  const ingresos_d = DATA.ingresos_detalle.filter(x=>x.cod===state.selectedCC && x.ano===y).sort((a,b)=>b.monto-a.monto);
-  if(ingresos_d.length>0){
-    const totalIng = ingresos_d.reduce((s,i)=>s+i.monto,0);
-    html += '<div class="card mt-6"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Detalle de Ingresos por Cuenta · '+yLabel(y)+'</h3><table class="w-full text-xs"><thead><tr><th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Cuenta</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Monto</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">%</th></tr></thead><tbody>';
-    ingresos_d.forEach(i=>{
-      const pct = totalIng>0?(i.monto/totalIng*100):0;
-      html += '<tr class="border-b border-gray-50"><td class="py-2 px-2 text-gray-700 font-medium">'+i.cuenta+'</td><td class="py-2 px-2 text-right text-orange-700 font-bold" style="font-variant-numeric:tabular-nums">'+fCLP(i.monto)+'</td><td class="py-2 px-2 text-right text-gray-500">'+fPct(pct)+'</td></tr>';
+  document.getElementById('centro-content').innerHTML = html;
+  document.getElementById('btn-cerrar-cc').addEventListener('click', () => { state.selectedCC = ''; renderCentro(); });
+  document.getElementById('btn-ver-mov').addEventListener('click', () => loadMovimientos(meta.cod, meta.nombre));
+
+  if (histo.length > 0) {
+    new Chart(document.getElementById('chart-cc-hist'), {
+      type:'bar',
+      data:{labels:histo.map(r=>yLabel(r.ano)),datasets:[
+        {label:'Ingresos',data:histo.map(r=>r.ingreso),backgroundColor:PRIMARY,borderRadius:6},
+        {label:'Costos',data:histo.map(r=>r.costo),backgroundColor:'#EF4444',borderRadius:6},
+        {label:'Resultado',data:histo.map(r=>r.resultado),type:'line',borderColor:'#F59E0B',pointRadius:5,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
+      ]},
+      options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:10}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
     });
-    html += '<tr class="bg-orange-50 font-bold"><td class="py-2 px-2 text-orange-900">TOTAL INGRESOS</td><td class="py-2 px-2 text-right text-orange-900" style="font-variant-numeric:tabular-nums">'+fCLP(totalIng)+'</td><td class="py-2 px-2 text-right text-orange-900">100,0%</td></tr>';
-    html += '</tbody></table></div></div>';
   }
-
-  if(costos_d.length>0){
-    const total = costos_d.reduce((s,c)=>s+c.monto,0);
-    html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"><div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Composición de costos '+yLabel(y)+'</h3><canvas id="chart-cc-costos" height="200"></canvas></div></div>';
-    html += '<div class="card"><div class="p-5 overflow-x-auto"><h3 class="text-sm font-bold text-gray-700 mb-4">Detalle por categoría</h3><table class="w-full text-xs"><thead><tr><th class="text-left py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Categoría</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">Monto</th><th class="text-right py-2.5 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100">%</th></tr></thead><tbody>';
-    costos_d.forEach(c=>{
-      const pct = total>0?(c.monto/total*100):0;
-      html += '<tr class="border-b border-gray-50"><td class="py-2 px-2 text-gray-700 font-medium">'+c.categoria+'</td><td class="py-2 px-2 text-right" style="font-variant-numeric:tabular-nums">'+fCLP(c.monto)+'</td><td class="py-2 px-2 text-right text-gray-500">'+fPct(pct)+'</td></tr>';
-    });
-    html += '</tbody></table></div></div></div>';
-  }
-
-  document.getElementById('cc-content').innerHTML = html;
-  document.getElementById('btn-cerrar-cc').addEventListener('click', ()=>{
-    state.selectedCC = '';
-    renderCC();
-  });
-
-  if(charts.ccHist) charts.ccHist.destroy();
-  charts.ccHist = new Chart(document.getElementById('chart-cc-hist'),{
-    type:'bar',
-    data:{labels:histo.map(h=>yLabel(h.ano)),datasets:[
-      {label:'Ingreso',data:histo.map(h=>h.ingreso),backgroundColor:'#c2410c',borderRadius:6},
-      {label:'Costo',data:histo.map(h=>h.costo),backgroundColor:'rgba(239,68,68,0.7)',borderRadius:6},
-      {label:'Resultado',data:histo.map(h=>h.resultado),type:'line',borderColor:'#F59E0B',pointRadius:6,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
-    ]},
-    options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
-  });
-
-  if(charts.ccMes) charts.ccMes.destroy();
-  if(meses_cc.length>0){
-    charts.ccMes = new Chart(document.getElementById('chart-cc-mes'),{
+  if (meses_cc.length > 0) {
+    new Chart(document.getElementById('chart-cc-mes'), {
       type:'bar',
       data:{labels:meses_cc.map(r=>MESES[r.mes]),datasets:[
-        {label:'Ingreso',data:meses_cc.map(r=>r.ingreso),backgroundColor:'#c2410c',borderRadius:4},
-        {label:'Costo',data:meses_cc.map(r=>r.costo),backgroundColor:'#EF4444',borderRadius:4},
+        {label:'Ingresos',data:meses_cc.map(r=>r.ingreso),backgroundColor:PRIMARY,borderRadius:6},
+        {label:'Costos',data:meses_cc.map(r=>r.costo),backgroundColor:'#EF4444',borderRadius:6},
         {label:'Resultado',data:meses_cc.map(r=>r.resultado),type:'line',borderColor:'#F59E0B',pointRadius:5,pointBackgroundColor:'#F59E0B',borderWidth:3,fill:false},
       ]},
-      options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:11,weight:600}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
-    });
-  } else {
-    const cnv = document.getElementById('chart-cc-mes');
-    if(cnv) cnv.parentElement.innerHTML = '<p class="text-center text-gray-400 text-sm py-12">Sin datos mensuales</p>';
-  }
-
-  if(costos_d.length>0){
-    if(charts.ccCostos) charts.ccCostos.destroy();
-    const palette = ['#EF4444','#166534','#F59E0B','#10B981','#3B82F6','#8B5CF6','#EC4899','#06B6D4','#F97316','#64748B','#A855F7','#14B8A6','#D97706','#EAB308'];
-    charts.ccCostos = new Chart(document.getElementById('chart-cc-costos'),{
-      type:'doughnut',
-      data:{labels:costos_d.map(c=>c.categoria),datasets:[{data:costos_d.map(c=>c.monto),backgroundColor:palette.slice(0,costos_d.length),borderWidth:2,borderColor:'#fff'}]},
-      options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.label+': '+fCLP(ctx.raw)}},legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',font:{size:10},padding:8}}}}
+      options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fM(ctx.raw)}},legend:{labels:{usePointStyle:true,pointStyle:'circle',font:{size:10}}}},scales:{y:{ticks:{callback:v=>fM(v)},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
     });
   }
 }
 
-// Filtros globales
-function rerenderActiveTab() {
-  const activeTab = document.querySelector('#tabs .tab-btn.active');
-  const tabid = activeTab ? activeTab.dataset.tabid : 'general';
-  if(tabid==='general') renderGeneral();
-  if(tabid==='mensual') renderMensual();
-  if(tabid==='categoria') renderCategoria();
-  if(tabid==='cc') renderCC();
-}
+// =========== MOVIMIENTOS ===========
+async function loadMovimientos(cod, nombre) {
+  document.getElementById('mov-panel').classList.add('visible');
+  document.getElementById('mov-title').textContent = 'Movimientos Libro Mayor · [' + cod + '] ' + nombre;
+  document.getElementById('mov-subtitle').textContent = periodoLabel() + ' · Cargando...';
+  document.getElementById('mov-loading').style.display = 'block';
+  document.getElementById('mov-table-wrap').style.display = 'none';
+  document.getElementById('mov-panel').scrollIntoView({behavior:'smooth', block:'start'});
 
-function setGlobalYear(y) {
-  state.year = y;
-  // Al cambiar año, resetear mes a "todo" si el mes ya no aplica (ej. 2026 solo tiene ene-feb)
-  if(state.month > 0) {
-    const mesesDisponibles = getAvailableMonths(y);
-    if(!mesesDisponibles.includes(state.month)) state.month = 0;
+  let query = db.from('3_chamonate_libro_mayor')
+    .select('fecha,tipo_doc,numero,glosa_enc,n_cuenta,glosa_det,debe,haber,rut,nombre')
+    .eq('c_cc', cod).eq('ano_contable', state.year)
+    .order('fecha', {ascending:true}).order('numero', {ascending:true}).limit(1000);
+  if (state.month > 0) query = query.eq('mes_contable', state.month);
+  const { data, error } = await query;
+
+  if (error) {
+    document.getElementById('mov-subtitle').textContent = 'Error al cargar movimientos.';
+    document.getElementById('mov-loading').innerHTML = '<p class="text-red-500">Error: ' + error.message + '</p>';
+    return;
   }
-  makeGlobalPills();
-  makeMonthSelect();
-  rerenderActiveTab();
-}
+  const rows = data || [];
+  document.getElementById('mov-subtitle').textContent = periodoLabel() + ' · ' + rows.length + ' movimientos' + (rows.length === 1000 ? ' (primeros 1.000)' : '');
+  document.getElementById('mov-loading').style.display = 'none';
 
-function setGlobalMonth(m) {
-  state.month = m;
-  rerenderActiveTab();
-}
-
-function getAvailableMonths(year) {
-  const meses = DATA.resumen_mensual.filter(r=>r.ano===year).map(r=>r.mes);
-  return Array.from(new Set(meses)).sort((a,b)=>a-b);
-}
-
-function makeGlobalPills() {
-  const c = document.getElementById('year-pills-global');
-  c.innerHTML = '';
-  [2024,2025,2026].forEach(y=>{
-    const b = document.createElement('button');
-    b.className = 'pill px-4 py-1.5 rounded-full text-xs font-semibold ' + (y===state.year?'active':'bg-gray-100 text-gray-500');
-    b.textContent = yLabel(y);
-    b.addEventListener('click', ()=>setGlobalYear(y));
-    c.appendChild(b);
+  const totalHaber = rows.reduce((s,r) => s + (+r.haber||0), 0);
+  const totalDebe  = rows.reduce((s,r) => s + (+r.debe||0), 0);
+  let html = '<div class="text-xs text-gray-500 mb-3 flex gap-6"><span>Total Haber: <strong class="text-blue-700">' + fCLP(totalHaber) + '</strong></span><span>Total Debe: <strong class="text-red-600">' + fCLP(totalDebe) + '</strong></span></div>';
+  html += '<table class="w-full text-xs min-w-max"><thead><tr>' +
+    ['Fecha','Tipo','Glosa','Cuenta','Detalle','Debe','Haber','RUT','Nombre'].map(h=>'<th class="text-left py-2 px-2 font-bold uppercase text-gray-400 border-b-2 border-gray-100 whitespace-nowrap">'+h+'</th>').join('') +
+    '</tr></thead><tbody>';
+  rows.forEach(r => {
+    html += '<tr class="border-b border-gray-50 hover:bg-orange-50/40">' +
+      '<td class="py-1.5 px-2 whitespace-nowrap text-gray-600">' + (r.fecha||'') + '</td>' +
+      '<td class="py-1.5 px-2 whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">' + (r.tipo_doc||'') + '</span></td>' +
+      '<td class="py-1.5 px-2 max-w-xs truncate text-gray-700" title="' + (r.glosa_enc||'') + '">' + (r.glosa_enc||'') + '</td>' +
+      '<td class="py-1.5 px-2 whitespace-nowrap text-gray-500 font-mono text-xs">' + (r.n_cuenta||'') + '</td>' +
+      '<td class="py-1.5 px-2 max-w-xs truncate text-gray-500" title="' + (r.glosa_det||'') + '">' + (r.glosa_det||'') + '</td>' +
+      '<td class="py-1.5 px-2 text-right font-semibold ' + (r.debe>0?'text-red-600':'text-gray-300') + '" style="font-variant-numeric:tabular-nums">' + (r.debe>0?fCLP(r.debe):'-') + '</td>' +
+      '<td class="py-1.5 px-2 text-right font-semibold ' + (r.haber>0?'text-blue-700':'text-gray-300') + '" style="font-variant-numeric:tabular-nums">' + (r.haber>0?fCLP(r.haber):'-') + '</td>' +
+      '<td class="py-1.5 px-2 whitespace-nowrap text-gray-500">' + (r.rut||'') + '</td>' +
+      '<td class="py-1.5 px-2 max-w-xs truncate text-gray-600" title="' + (r.nombre||'') + '">' + (r.nombre||'') + '</td>' +
+      '</tr>';
   });
+  html += '</tbody></table>';
+  document.getElementById('mov-table-wrap').innerHTML = html;
+  document.getElementById('mov-table-wrap').style.display = 'block';
+}
+function hideMov() { document.getElementById('mov-panel').classList.remove('visible'); }
+document.getElementById('mov-close').addEventListener('click', hideMov);
+
+// =========== DESCARGA CSV ===========
+function extractNPF(glosa) {
+  if (!glosa) return '';
+  const m = String(glosa).match(/[Nn][°º#]\s*\.?\s*(\d{3,})/);
+  return m ? m[1] : '';
+}
+function exportCSV(rows, filename) {
+  if (!rows.length) { alert('No hay datos para este período.'); return; }
+  const cols = ['fecha','ano_contable','mes_contable','tipo_doc','numero','n_prefactura','cc_cod','cc_nombre','cc_grupo','cuenta','n_cuenta','glosa_enc','glosa_det','debe','haber','rut','nombre','tipo'];
+  const csv = [cols.join(';'), ...rows.map(r => cols.map(c => {
+    const v = c === 'n_prefactura' ? extractNPF(r['glosa_enc']) : r[c];
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    return (s.includes(';') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }).join(';'))].join('\n');
+  const blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
 }
 
-function makeMonthSelect() {
-  const sel = document.getElementById('month-select-global');
-  const meses = getAvailableMonths(state.year);
-  let opts = '<option value="0">Todo el año</option>';
-  meses.forEach(m=>{
-    opts += '<option value="' + m + '"' + (m===state.month?' selected':'') + '>' + MESES[m] + '</option>';
-  });
-  sel.innerHTML = opts;
-  sel.value = String(state.month);
-  // remove previous listener if any
-  sel.onchange = (e)=>setGlobalMonth(parseInt(e.target.value));
-}
-
-// Filtra resumen_cc / resumen_cc_mes según year + month seleccionados
-// Si month==0 → usa resumen_cc (totales del año). Si month>0 → usa resumen_cc_mes filtrado por ese mes
-function getFilteredCC() {
-  if(state.month === 0) {
-    return DATA.resumen_cc.filter(r=>r.ano===state.year);
-  } else {
-    return DATA.resumen_cc_mes.filter(r=>r.ano===state.year && r.mes===state.month);
+function showToast(msg, color) {
+  let t = document.getElementById('dl-toast');
+  if (!t) {
+    t = document.createElement('div'); t.id = 'dl-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99999;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.18);transition:opacity 0.3s;color:#fff;';
+    document.body.appendChild(t);
   }
+  t.style.background = color || PRIMARY; t.style.opacity = '1'; t.textContent = msg;
 }
+function hideToast() { const t = document.getElementById('dl-toast'); if (t) t.style.opacity = '0'; }
 
-function getFilteredCategoria() {
-  // Si month==0 usa resumen_ubicacion. Si month>0, recalcula sumando resumen_cc_mes por categoría
-  if(state.month === 0) {
-    return DATA.resumen_categoria.filter(r=>r.ano===state.year);
-  } else {
-    const acc = {};
-    CATEGORIAS_ORDEN.forEach(u=>acc[u]={ingreso:0,costo:0});
-    DATA.resumen_cc_mes.filter(r=>r.ano===state.year && r.mes===state.month).forEach(r=>{
-      if(acc[r.categoria]){
-        acc[r.categoria].ingreso += r.ingreso;
-        acc[r.categoria].costo += r.costo;
-      }
-    });
-    return CATEGORIAS_ORDEN.map(u=>{
-      const x = acc[u];
-      const resultado = x.ingreso - x.costo;
-      const margen = x.ingreso>0 ? (resultado/x.ingreso*100) : (x.costo>0?-100:0);
-      return {ano:state.year, ubicacion:u, ingreso:x.ingreso, costo:x.costo, resultado, margen:Math.round(margen*10)/10};
-    });
+async function downloadDetalle(params) {
+  const {tipo, ano, mes, grupo, cod} = params;
+  let allRows = [], from = 0;
+  const PAGE = 1000;
+  showToast('⏳ Descargando detalle...', PRIMARY);
+  while (true) {
+    let q = db.from('v_3_pack_detalle').select('*');
+    if (tipo && tipo !== 'ambos') q = q.eq('tipo', tipo);
+    if (ano) q = q.eq('ano_contable', ano);
+    if (mes && mes > 0) q = q.eq('mes_contable', mes);
+    if (grupo) q = q.eq('cc_grupo', grupo);
+    if (cod) q = q.eq('cc_cod', cod);
+    q = q.order('fecha').order('numero').range(from, from + PAGE - 1);
+    const { data, error } = await q;
+    if (error) {
+      hideToast(); showToast('❌ Error: ' + error.message, '#dc2626');
+      setTimeout(hideToast, 5000); console.error(error); return;
+    }
+    if (!data?.length) break;
+    allRows.push(...data);
+    showToast('⏳ Descargando... ' + allRows.length + ' filas', PRIMARY);
+    if (data.length < PAGE) break;
+    from += PAGE;
   }
+  hideToast();
+  if (!allRows.length) { alert('No hay datos para este período.'); return; }
+  const t = tipo || 'todo', y = ano ? String(ano) : '';
+  const m = (mes && mes > 0) ? (MESES[mes] || String(mes)) : '';
+  const g = grupo ? grupo.replace(/\s+/g,'-') : '', c = cod || '';
+  const parts = ['PACK', t, c || g || 'todos', y, m].filter(Boolean);
+  exportCSV(allRows, parts.join('_') + '.csv');
+  showToast('✅ ' + allRows.length + ' filas descargadas', '#059669');
+  setTimeout(hideToast, 3000);
 }
 
-function getFilteredAnual() {
-  // Totales del año con filtro de mes aplicado
-  if(state.month === 0) {
-    return DATA.resumen_anual.find(r=>r.ano===state.year) || {ingreso:0,costo:0,resultado:0,margen:0};
-  } else {
-    const m = DATA.resumen_mensual.find(r=>r.ano===state.year && r.mes===state.month);
-    return m || {ingreso:0,costo:0,resultado:0,margen:0};
-  }
+function dlClick(tipo, ano, mes, grupo, cod) {
+  downloadDetalle({ tipo, ano, mes: mes || 0, grupo: grupo || null, cod: cod || null });
 }
 
-function periodoLabel() {
-  return state.month===0 ? yLabel(state.year) : MESES[state.month] + ' ' + state.year;
-}
-
-makeGlobalPills();
-makeMonthSelect();
-renderGeneral();
+initData();
 </script>
 </body>
 </html>
