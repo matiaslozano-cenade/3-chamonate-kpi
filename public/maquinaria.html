@@ -109,6 +109,11 @@
       <p class="text-xs text-gray-400 mb-4" id="ubic-ranking-subtitulo">Año seleccionado · Click en barra para ver detalle</p>
       <canvas id="chart-grupos" height="220"></canvas>
     </div></div>
+    <div class="card"><div class="p-5 overflow-x-auto">
+      <h3 class="text-sm font-bold text-gray-700 mb-1">Composición de Costos por Cuenta</h3>
+      <p class="text-xs text-gray-400 mb-4">Cuentas contables consideradas como costos · período seleccionado</p>
+      <div id="cost-desglose-general"></div>
+    </div></div>
   </div>
 
   <!-- MENSUAL -->
@@ -420,6 +425,8 @@ function renderGeneral() {
     options:{responsive:true,plugins:{tooltip:{callbacks:{label:ctx=>fPct(ctx.raw)}},legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'},grid:{color:'#E2E8F0'}},x:{grid:{display:false}}}}
   });
 
+  renderCostDesglose('cost-desglose-general', {});
+
   if (charts.grupo) charts.grupo.destroy();
   const grupoTotals = {};
   GRUPOS_ORDEN.forEach(u => grupoTotals[u] = {ing:0,costo:0,res:0});
@@ -648,11 +655,17 @@ function renderMaquina() {
     html += '<div class="card"><div class="p-5"><h3 class="text-sm font-bold text-gray-700 mb-4">Mensual ' + yLabel(y) + '</h3><canvas id="chart-maq-mes"></canvas></div></div>';
   }
   html += '</div>';
+  html += '<div class="card mt-6"><div class="p-5 overflow-x-auto">' +
+    '<h3 class="text-sm font-bold text-gray-700 mb-1">Composición de Costos por Cuenta</h3>' +
+    '<p class="text-xs text-gray-400 mb-4">' + periodoLabel() + ' · ' + meta.nombre + '</p>' +
+    '<div id="cost-desglose-maq"></div>' +
+    '</div></div>';
 
   document.getElementById('maquina-content').innerHTML = html;
 
   document.getElementById('btn-cerrar-maq').addEventListener('click', () => { state.selectedMaq = ''; renderMaquina(); });
   document.getElementById('btn-ver-mov').addEventListener('click', () => loadMovimientos(meta.cod, meta.nombre));
+  renderCostDesglose('cost-desglose-maq', { cod: meta.cod });
 
   if (histo.length > 0) {
     new Chart(document.getElementById('chart-maq-hist'), {
@@ -831,6 +844,67 @@ async function downloadDetalle(params) {
 
 function dlClick(tipo, ano, mes, grupo, cod) {
   downloadDetalle({ tipo, ano, mes: mes || 0, grupo: grupo || null, cod: cod || null });
+}
+
+// =========== DESGLOSE COSTOS ===========
+async function renderCostDesglose(containerId, { cod = null, grupo = null } = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '<p class="text-xs text-gray-400 py-4 text-center">Cargando desglose...</p>';
+
+  let allRows = [], from = 0;
+  const PAGE = 1000;
+  while (true) {
+    let q = db.from('v_3_maqu_detalle').select('cuenta,n_cuenta,debe')
+      .eq('tipo', 'costos')
+      .eq('ano_contable', state.year);
+    if (state.month > 0) q = q.eq('mes_contable', state.month);
+    if (cod)   q = q.eq('cc_cod', cod);
+    if (grupo) q = q.eq('cc_grupo', grupo);
+    q = q.range(from, from + PAGE - 1);
+    const { data, error } = await q;
+    if (error || !data?.length) break;
+    allRows.push(...data);
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const map = {};
+  allRows.forEach(r => {
+    const k = r.cuenta;
+    if (!map[k]) map[k] = { cuenta: r.cuenta, n_cuenta: r.n_cuenta || '-', total: 0 };
+    map[k].total += +(r.debe) || 0;
+  });
+  const rows = Object.values(map).filter(r => r.total > 0).sort((a, b) => b.total - a.total);
+  const totalCosto = rows.reduce((s, r) => s + r.total, 0);
+
+  if (!rows.length) {
+    container.innerHTML = '<p class="text-xs text-gray-400 py-2">Sin costos en este período.</p>';
+    return;
+  }
+
+  let html = '<table class="w-full text-xs"><thead><tr>' +
+    ['Cuenta','Nombre','Monto','% del total'].map(h => '<th class="text-left py-2 px-2 text-xs font-bold uppercase text-gray-400 border-b-2 border-gray-100 whitespace-nowrap">' + h + '</th>').join('') +
+    '</tr></thead><tbody>';
+  rows.forEach(r => {
+    const pct = totalCosto > 0 ? r.total / totalCosto * 100 : 0;
+    html += '<tr class="border-b border-gray-50 hover:bg-red-50/30">' +
+      '<td class="py-2 px-2 font-mono text-gray-400 whitespace-nowrap">' + r.cuenta + '</td>' +
+      '<td class="py-2 px-2 font-semibold text-gray-700">' + r.n_cuenta + '</td>' +
+      '<td class="py-2 px-2 text-right font-bold text-red-600 whitespace-nowrap" style="font-variant-numeric:tabular-nums">' + fM(r.total) + '</td>' +
+      '<td class="py-2 px-2">' +
+        '<div class="flex items-center gap-2 justify-end">' +
+        '<div class="w-20 bg-gray-100 rounded-full h-1.5"><div class="bg-red-400 h-1.5 rounded-full" style="width:' + Math.min(pct, 100).toFixed(1) + '%"></div></div>' +
+        '<span class="text-gray-400 w-10 text-right">' + pct.toFixed(1) + '%</span>' +
+        '</div>' +
+      '</td>' +
+      '</tr>';
+  });
+  html += '</tbody><tfoot><tr class="border-t-2 border-gray-200 bg-gray-50">' +
+    '<td colspan="2" class="py-2 px-2 font-bold text-gray-700">Total costos</td>' +
+    '<td class="py-2 px-2 text-right font-extrabold text-red-600 whitespace-nowrap" style="font-variant-numeric:tabular-nums">' + fM(totalCosto) + '</td>' +
+    '<td></td></tr></tfoot>';
+  container.innerHTML = html;
 }
 
 initData();
