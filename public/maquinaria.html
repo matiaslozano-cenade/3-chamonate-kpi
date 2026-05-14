@@ -206,7 +206,7 @@ async function initData() {
   const [ccRes, grupoRes, catRes] = await Promise.all([
     db.from('v_3_maqu_cc').select('*'),
     db.from('v_3_maqu_grupo').select('*'),
-    db.from('3_chamonate_centros_costo').select('cod,nombre,grupo').eq('linea_negocio','maquinaria')
+    db.from('3_chamonate_centros_costo').select('cod,lm_cod,nombre,grupo').eq('linea_negocio','maquinaria')
   ]);
 
   if (ccRes.error || grupoRes.error || catRes.error) {
@@ -219,8 +219,8 @@ async function initData() {
   const grupoRows = grupoRes.data;
   const catRows = catRes.data;
 
-  // catalogo
-  const catalogo = catRows.map(r => ({ cod: r.cod, nombre: r.nombre, grupo: r.grupo }));
+  // catalogo: usar lm_cod cuando existe (igual que COALESCE en el view)
+  const catalogo = catRows.map(r => ({ cod: r.lm_cod || r.cod, nombre: r.nombre, grupo: r.grupo }));
 
   // GRUPOS_ORDEN: unique grupos from catalog
   const gruposSet = new Set(catRows.map(r => r.grupo).filter(Boolean));
