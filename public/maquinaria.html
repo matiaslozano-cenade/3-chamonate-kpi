@@ -852,6 +852,7 @@ async function renderCostDesglose(containerId, { cod = null, grupo = null } = {}
   if (!container) return;
   container.innerHTML = '<p class="text-xs text-gray-400 py-4 text-center">Cargando desglose...</p>';
 
+  // 1) Costos reales (3xxx) desde el detalle
   let allRows = [], from = 0;
   const PAGE = 1000;
   while (true) {
@@ -872,9 +873,39 @@ async function renderCostDesglose(containerId, { cod = null, grupo = null } = {}
   const map = {};
   allRows.forEach(r => {
     const k = r.cuenta;
-    if (!map[k]) map[k] = { cuenta: r.cuenta, n_cuenta: r.n_cuenta || '-', total: 0 };
+    if (!map[k]) map[k] = { cuenta: r.cuenta, n_cuenta: r.n_cuenta || '-', total: 0, sintetico: false };
     map[k].total += +(r.debe) || 0;
   });
+
+  // 2) Intereses diferidos leasing distribuidos en /12 (sintético)
+  {
+    let q = db.from('3_chamonate_libro_mayor')
+      .select('c_cc,debe')
+      .in('cuenta', ['1109000004','1301000004'])
+      .eq('ano_contable', state.year)
+      .gt('debe', 0);
+    if (cod) {
+      q = q.eq('c_cc', cod);
+    } else if (grupo) {
+      const codsGrupo = DATA.catalogo.filter(x => x.grupo === grupo).map(x => x.cod);
+      if (codsGrupo.length) q = q.in('c_cc', codsGrupo);
+    }
+    const { data: intData } = await q;
+    if (intData?.length) {
+      let totalInt = 0;
+      intData.forEach(r => { totalInt += +(r.debe) || 0; });
+      const montoLeasing = state.month > 0 ? totalInt / 12 : totalInt;
+      if (montoLeasing > 0) {
+        map['__leasing__'] = {
+          cuenta: '1109/1301',
+          n_cuenta: 'Intereses Leasing (distribuido /12)',
+          total: montoLeasing,
+          sintetico: true
+        };
+      }
+    }
+  }
+
   const rows = Object.values(map).filter(r => r.total > 0).sort((a, b) => b.total - a.total);
   const totalCosto = rows.reduce((s, r) => s + r.total, 0);
 
@@ -888,9 +919,12 @@ async function renderCostDesglose(containerId, { cod = null, grupo = null } = {}
     '</tr></thead><tbody>';
   rows.forEach(r => {
     const pct = totalCosto > 0 ? r.total / totalCosto * 100 : 0;
-    html += '<tr class="border-b border-gray-50 hover:bg-red-50/30">' +
+    const rowBg = r.sintetico ? 'bg-amber-50/60 hover:bg-amber-50' : 'hover:bg-red-50/30';
+    const nameColor = r.sintetico ? 'text-amber-700 font-bold' : 'font-semibold text-gray-700';
+    const tag = r.sintetico ? ' <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-600 font-semibold">distribuido</span>' : '';
+    html += '<tr class="border-b border-gray-50 ' + rowBg + '">' +
       '<td class="py-2 px-2 font-mono text-gray-400 whitespace-nowrap">' + r.cuenta + '</td>' +
-      '<td class="py-2 px-2 font-semibold text-gray-700">' + r.n_cuenta + '</td>' +
+      '<td class="py-2 px-2 ' + nameColor + '">' + r.n_cuenta + tag + '</td>' +
       '<td class="py-2 px-2 text-right font-bold text-red-600 whitespace-nowrap" style="font-variant-numeric:tabular-nums">' + fM(r.total) + '</td>' +
       '<td class="py-2 px-2">' +
         '<div class="flex items-center gap-2 justify-end">' +
