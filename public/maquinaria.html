@@ -499,7 +499,7 @@ function renderGrupo() {
   if (!state.selectedGrupo) {
     document.getElementById('grupo-detail').innerHTML = '';
     let html = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">';
-    ubics.sort((a,b)=>b.ingreso-a.ingreso).forEach(r => {
+    ubics.sort((a,b)=>b.resultado-a.resultado).forEach(r => {
       const color = (GRUPO_COLOR[r.grupo] || DEFAULT_COLOR).replace('#','');
       const hexColor = GRUPO_COLOR[r.grupo] || DEFAULT_COLOR;
       html += '<div class="level-card card p-5" data-grupo="' + r.grupo + '">' +
