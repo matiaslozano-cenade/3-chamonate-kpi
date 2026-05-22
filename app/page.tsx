@@ -29,7 +29,7 @@ const MODULOS: Modulo[] = [
   {
     titulo: "Campo",
     descripcion: "Rentabilidad por temporada, variedad y cuartel de Campo Chamonate.",
-    url: "/campo.html",
+    url: "https://3-chamonate-kpi-campo.vercel.app",
     disponible: false,
     icono: Sprout,
     acento: {
@@ -49,7 +49,7 @@ const MODULOS: Modulo[] = [
   {
     titulo: "Packing",
     descripcion: "Rentabilidad de operación de packing y resultados por línea.",
-    url: "/packing.html",
+    url: "https://3-chamonate-kpi-packing.vercel.app",
     disponible: false,
     icono: Package,
     acento: {
@@ -69,7 +69,7 @@ const MODULOS: Modulo[] = [
   {
     titulo: "Maquinaria",
     descripcion: "Rentabilidad de la flota de maquinaria (2024 – 2026 Q1).",
-    url: "/maquinaria.html",
+    url: "https://3-chamonate-kpi-maquinaria.vercel.app",
     icono: Wrench,
     acento: {
       glow: "bg-blue-500/10 group-hover:bg-blue-500/20",
