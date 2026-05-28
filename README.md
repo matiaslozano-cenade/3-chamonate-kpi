@@ -1,6 +1,6 @@
 # 3-chamonate-kpi
 
-Hub interno de indicadores de rentabilidad de Chamonate.
+Hub interno de indicadores de rentabilidad de Chamonate — Maquinaria.
 
 ## Stack
 
@@ -11,13 +11,12 @@ Hub interno de indicadores de rentabilidad de Chamonate.
 
 ## Dashboards
 
-| Módulo | Color | Archivo |
+| Módulo | Color | URL |
 | --- | --- | --- |
-| Campo | Verde | `/public/campo.html` |
-| Packing | Naranja | `/public/packing.html` |
-| Maquinaria | Azul | `/public/maquinaria.html` |
+| Maquinaria | Azul | `3-chamonate-kpi-maquinaria.vercel.app` |
+| Maquinaria V2 | Cyan | `3-chamonate-maquinaria.vercel.app` |
 
-Cada dashboard es un HTML standalone (Tailwind CDN + Chart.js) servido desde `/public`.
+El hub enlaza a proyectos Vercel independientes por cada dashboard.
 
 ## Desarrollo local
 
@@ -25,5 +24,3 @@ Cada dashboard es un HTML standalone (Tailwind CDN + Chart.js) servido desde `/p
 npm install
 npm run dev
 ```
-
-Para reemplazar un dashboard, sobrescribir el HTML correspondiente en `/public`.

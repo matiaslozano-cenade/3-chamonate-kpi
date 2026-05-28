@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Sprout, Package, Wrench, TrendingUp } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Wrench, TrendingUp } from "lucide-react";
 
 const PORTAL_INICIO_URL = "https://3-chamonate-inicio.vercel.app";
 
@@ -26,46 +26,6 @@ type Modulo = {
 };
 
 const MODULOS: Modulo[] = [
-  {
-    titulo: "Campo",
-    descripcion: "Rentabilidad por temporada, variedad y cuartel de Campo Chamonate.",
-    url: "https://3-chamonate-kpi-campo.vercel.app",
-    disponible: false,
-    icono: Sprout,
-    acento: {
-      glow: "bg-emerald-500/10 group-hover:bg-emerald-500/20",
-      iconBg: "bg-emerald-500/10",
-      iconRing: "ring-emerald-500/30",
-      iconBgHover: "group-hover:bg-emerald-500/20",
-      iconRingHover: "group-hover:ring-emerald-400/50",
-      iconColor: "text-emerald-400",
-      dot: "bg-emerald-400",
-      dotShadow: "shadow-[0_0_8px_rgba(52,211,153,0.6)]",
-      textActive: "text-emerald-400",
-      border: "hover:border-emerald-500/40",
-      shadow: "hover:shadow-emerald-500/20",
-    },
-  },
-  {
-    titulo: "Packing",
-    descripcion: "Rentabilidad de operación de packing y resultados por línea.",
-    url: "https://3-chamonate-kpi-packing.vercel.app",
-    disponible: false,
-    icono: Package,
-    acento: {
-      glow: "bg-orange-500/10 group-hover:bg-orange-500/20",
-      iconBg: "bg-orange-500/10",
-      iconRing: "ring-orange-500/30",
-      iconBgHover: "group-hover:bg-orange-500/20",
-      iconRingHover: "group-hover:ring-orange-400/50",
-      iconColor: "text-orange-400",
-      dot: "bg-orange-400",
-      dotShadow: "shadow-[0_0_8px_rgba(251,146,60,0.6)]",
-      textActive: "text-orange-400",
-      border: "hover:border-orange-500/40",
-      shadow: "hover:shadow-orange-500/20",
-    },
-  },
   {
     titulo: "Maquinaria",
     descripcion: "Rentabilidad de la flota de maquinaria (2024 – 2026 Q1).",
@@ -137,7 +97,7 @@ export default function Home() {
           </p>
           <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
             KPIs{" "}
-            <span className="bg-gradient-to-r from-emerald-400 via-orange-400 to-blue-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
               Chamonate
             </span>
           </h1>
@@ -146,7 +106,7 @@ export default function Home() {
           </p>
         </header>
 
-        <section className="mt-16 grid gap-5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="mt-16 grid gap-5 sm:mt-20 sm:grid-cols-2 max-w-2xl mx-auto w-full">
           {MODULOS.map((modulo) => (
             <ModuloCard key={modulo.titulo} modulo={modulo} />
           ))}
