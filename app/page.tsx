@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Wrench, TrendingUp } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Wrench } from "lucide-react";
 
 const PORTAL_INICIO_URL = "https://3-chamonate-inicio.vercel.app";
 
@@ -28,8 +28,8 @@ type Modulo = {
 const MODULOS: Modulo[] = [
   {
     titulo: "Maquinaria",
-    descripcion: "Rentabilidad de la flota de maquinaria (2024 – 2026 Q1).",
-    url: "https://3-chamonate-kpi-maquinaria.vercel.app",
+    descripcion: "Rentabilidad de la flota: ingresos reales por OT vs costos, EERR por labor y máquina.",
+    url: "https://3-chamonate-maquinaria.vercel.app",
     icono: Wrench,
     acento: {
       glow: "bg-blue-500/10 group-hover:bg-blue-500/20",
@@ -43,25 +43,6 @@ const MODULOS: Modulo[] = [
       textActive: "text-blue-400",
       border: "hover:border-blue-500/40",
       shadow: "hover:shadow-blue-500/20",
-    },
-  },
-  {
-    titulo: "Maquinaria V2",
-    descripcion: "Ingresos reales por OT · Mes de trabajo vs mes de facturación.",
-    url: "https://3-chamonate-maquinaria.vercel.app",
-    icono: TrendingUp,
-    acento: {
-      glow: "bg-cyan-500/10 group-hover:bg-cyan-500/20",
-      iconBg: "bg-cyan-500/10",
-      iconRing: "ring-cyan-500/30",
-      iconBgHover: "group-hover:bg-cyan-500/20",
-      iconRingHover: "group-hover:ring-cyan-400/50",
-      iconColor: "text-cyan-400",
-      dot: "bg-cyan-400",
-      dotShadow: "shadow-[0_0_8px_rgba(34,211,238,0.6)]",
-      textActive: "text-cyan-400",
-      border: "hover:border-cyan-500/40",
-      shadow: "hover:shadow-cyan-500/20",
     },
   },
 ];

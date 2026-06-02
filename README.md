@@ -13,10 +13,11 @@ Hub interno de indicadores de rentabilidad de Chamonate — Maquinaria.
 
 | Módulo | Color | URL |
 | --- | --- | --- |
-| Maquinaria | Azul | `3-chamonate-kpi-maquinaria.vercel.app` |
-| Maquinaria V2 | Cyan | `3-chamonate-maquinaria.vercel.app` |
+| Maquinaria | Azul | `3-chamonate-maquinaria.vercel.app` |
 
-El hub enlaza a proyectos Vercel independientes por cada dashboard.
+El hub enlaza a proyectos Vercel independientes por cada dashboard. El proyecto antiguo
+`3-chamonate-kpi-maquinaria` fue eliminado; el dashboard de maquinaria vive en
+`3-chamonate-maquinaria` (repo propio).
 
 ## Desarrollo local
 
