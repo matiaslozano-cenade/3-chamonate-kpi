@@ -9,7 +9,7 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: "Chamonate — Indicadores",
-  description: "Indicadores de rentabilidad de Chamonate: Campo, Packing y Maquinaria.",
+  description: "Indicadores de rentabilidad de Chamonate: General (consolidado), Campo, Packing y Maquinaria.",
 };
 
 export default function RootLayout({

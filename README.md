@@ -1,6 +1,6 @@
 # 3-chamonate-kpi
 
-Hub interno de indicadores de rentabilidad de Chamonate — Campo, Packing y Maquinaria.
+Hub interno de indicadores de rentabilidad de Chamonate — General (consolidado), Campo, Packing y Maquinaria.
 
 ## Stack
 
@@ -13,6 +13,7 @@ Hub interno de indicadores de rentabilidad de Chamonate — Campo, Packing y Maq
 
 | Módulo | Color | URL |
 | --- | --- | --- |
+| General (consolidado) | Índigo | `3-chamonate-general.vercel.app` |
 | Campo | Verde | `3-chamonate-kpi-campo.vercel.app` |
 | Packing | Naranja | `3-chamonate-kpi-packing.vercel.app` |
 | Maquinaria | Azul | `3-chamonate-maquinaria.vercel.app` |

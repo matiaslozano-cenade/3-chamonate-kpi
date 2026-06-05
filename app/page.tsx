@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Sprout, Package, Wrench } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BarChart3, Sprout, Package, Wrench } from "lucide-react";
 
 const PORTAL_INICIO_URL = "https://3-chamonate-inicio.vercel.app";
 
@@ -26,6 +26,25 @@ type Modulo = {
 };
 
 const MODULOS: Modulo[] = [
+  {
+    titulo: "General",
+    descripcion: "Consolidado de las tres líneas: ingresos, costos, resultado y margen por año y mes, con filtro por línea de negocio.",
+    url: "https://3-chamonate-general.vercel.app",
+    icono: BarChart3,
+    acento: {
+      glow: "bg-indigo-500/10 group-hover:bg-indigo-500/20",
+      iconBg: "bg-indigo-500/10",
+      iconRing: "ring-indigo-500/30",
+      iconBgHover: "group-hover:bg-indigo-500/20",
+      iconRingHover: "group-hover:ring-indigo-400/50",
+      iconColor: "text-indigo-400",
+      dot: "bg-indigo-400",
+      dotShadow: "shadow-[0_0_8px_rgba(129,140,248,0.6)]",
+      textActive: "text-indigo-400",
+      border: "hover:border-indigo-500/40",
+      shadow: "hover:shadow-indigo-500/20",
+    },
+  },
   {
     titulo: "Campo",
     descripcion: "Rentabilidad agrícola por temporada: ingresos vs costos, EERR por cuenta, drill sucursal → cultivo → cuartel.",
@@ -125,7 +144,7 @@ export default function Home() {
           </p>
         </header>
 
-        <section className="mt-16 grid gap-5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto w-full">
+        <section className="mt-16 grid gap-5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto w-full">
           {MODULOS.map((modulo) => (
             <ModuloCard key={modulo.titulo} modulo={modulo} />
           ))}
