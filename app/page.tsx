@@ -29,7 +29,7 @@ const MODULOS: Modulo[] = [
   {
     titulo: "General",
     descripcion: "Consolidado de las tres líneas: ingresos, costos, resultado y margen por año y mes, con filtro por línea de negocio.",
-    url: "https://3-chamonate-general.vercel.app",
+    url: "https://3-chamonate-kpi-general.vercel.app",
     icono: BarChart3,
     acento: {
       glow: "bg-indigo-500/10 group-hover:bg-indigo-500/20",

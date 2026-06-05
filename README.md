@@ -13,7 +13,7 @@ Hub interno de indicadores de rentabilidad de Chamonate — General (consolidado
 
 | Módulo | Color | URL |
 | --- | --- | --- |
-| General (consolidado) | Índigo | `3-chamonate-general.vercel.app` |
+| General (consolidado) | Índigo | `3-chamonate-kpi-general.vercel.app` |
 | Campo | Verde | `3-chamonate-kpi-campo.vercel.app` |
 | Packing | Naranja | `3-chamonate-kpi-packing.vercel.app` |
 | Maquinaria | Azul | `3-chamonate-maquinaria.vercel.app` |
