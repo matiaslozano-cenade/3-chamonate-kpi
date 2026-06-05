@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Wrench } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Sprout, Package, Wrench } from "lucide-react";
 
 const PORTAL_INICIO_URL = "https://3-chamonate-inicio.vercel.app";
 
@@ -26,6 +26,44 @@ type Modulo = {
 };
 
 const MODULOS: Modulo[] = [
+  {
+    titulo: "Campo",
+    descripcion: "Rentabilidad agrícola por temporada: ingresos vs costos, EERR por cuenta, drill sucursal → cultivo → cuartel.",
+    url: "https://3-chamonate-kpi-campo.vercel.app",
+    icono: Sprout,
+    acento: {
+      glow: "bg-emerald-500/10 group-hover:bg-emerald-500/20",
+      iconBg: "bg-emerald-500/10",
+      iconRing: "ring-emerald-500/30",
+      iconBgHover: "group-hover:bg-emerald-500/20",
+      iconRingHover: "group-hover:ring-emerald-400/50",
+      iconColor: "text-emerald-400",
+      dot: "bg-emerald-400",
+      dotShadow: "shadow-[0_0_8px_rgba(52,211,153,0.6)]",
+      textActive: "text-emerald-400",
+      border: "hover:border-emerald-500/40",
+      shadow: "hover:shadow-emerald-500/20",
+    },
+  },
+  {
+    titulo: "Packing",
+    descripcion: "Rentabilidad de packing por línea: ingresos vs costos, EERR por cuenta, drill línea → centro de costo.",
+    url: "https://3-chamonate-kpi-packing.vercel.app",
+    icono: Package,
+    acento: {
+      glow: "bg-orange-500/10 group-hover:bg-orange-500/20",
+      iconBg: "bg-orange-500/10",
+      iconRing: "ring-orange-500/30",
+      iconBgHover: "group-hover:bg-orange-500/20",
+      iconRingHover: "group-hover:ring-orange-400/50",
+      iconColor: "text-orange-400",
+      dot: "bg-orange-400",
+      dotShadow: "shadow-[0_0_8px_rgba(251,146,60,0.6)]",
+      textActive: "text-orange-400",
+      border: "hover:border-orange-500/40",
+      shadow: "hover:shadow-orange-500/20",
+    },
+  },
   {
     titulo: "Maquinaria",
     descripcion: "Rentabilidad de la flota: ingresos reales por OT vs costos, EERR por labor y máquina.",
@@ -87,7 +125,7 @@ export default function Home() {
           </p>
         </header>
 
-        <section className="mt-16 grid gap-5 sm:mt-20 sm:grid-cols-2 max-w-2xl mx-auto w-full">
+        <section className="mt-16 grid gap-5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto w-full">
           {MODULOS.map((modulo) => (
             <ModuloCard key={modulo.titulo} modulo={modulo} />
           ))}
